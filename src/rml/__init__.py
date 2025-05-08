@@ -120,3 +120,6 @@ def main(target_filenames: list[str]) -> None:
         print(pformat_comment(comment))
 
     print(f"Found {len(comments)} issues!")
+
+if __name__ == "__main__":
+    main()
