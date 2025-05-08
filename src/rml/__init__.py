@@ -43,7 +43,12 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
     try:
         response = httpx.get(f"http://{RECURSE_HOSTNAME}/api/check/{check_id}/")
         response.raise_for_status()
-        return response.json()["status"]
+        response_body = response.json()
+        print(response_body)
+        comments = response_body.get("comments", None)
+        if comments is not None:
+            comments = list(map(Comment.model_validate, comments))
+        return (response_body["status"], comments)
     except httpx.HTTPStatusError:
         print(f"Error connecting to RECURSE_SERVER ({response.status_code})")
         sys.exit(1)
@@ -97,21 +102,20 @@ def main(target_filenames: list[str]) -> None:
 
     # HACK: main tempdir might not /tmp/
     archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
-    archive_path = f"/tmp/{archive_filename}"
+    archive_path = Path(f"/tmp/{archive_filename}")
     local["tar"]["-czf", archive_path, *all_filenames]()
 
     check_id = post_check(archive_filename, archive_path, target_filenames)
-    check_status, check_payload = get_check_status(check_id)
+    check_status, comments = get_check_status(check_id)
 
     while check_status not in ["completed", "error"]:
         time.sleep(0.5)
-        check_status, check_payload = get_check_status(check_id)
+        check_status, comments = get_check_status(check_id)
 
-    if check_payload is None:
+    if comments is None:
         print("Analysis failed!")
         sys.exit(1)
 
-    comments = list(map(Comment.model_validate, check_payload["comments"]))
     for comment in comments:
         print(pformat_comment(comment))
 
