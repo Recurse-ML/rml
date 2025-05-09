@@ -1,0 +1,18 @@
+[project]
+name = "rml"
+version = "0.1.0"
+description = "CLI for Recurse ML"
+readme = "README.md"
+authors = [
+    {name = "Armin Stepanyan", email = "a@recurse.ml"},
+    {name = "Enzo Incutti", email = "e@recurse.ml"},
+]
+requires-python = ">=3.11"
+dependencies = ["click", "httpx", "rich"]
+
+[project.scripts]
+rml = "rml:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
