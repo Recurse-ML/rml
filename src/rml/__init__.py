@@ -3,12 +3,14 @@ import sys
 from typing import Optional
 from datetime import datetime
 import time
-import httpx
+from httpx import Client, HTTPStatusError
 from plumbum import local
 from pathlib import Path
 
 from rml.datatypes import Comment
-from rml.package_config import RECURSE_HOSTNAME
+from rml.package_config import HOST
+
+client = Client(base_url=HOST)
 
 
 def pformat_comment(comment: Comment) -> str:
@@ -22,12 +24,14 @@ def pformat_comment(comment: Comment) -> str:
         pretty_output += f"More info: {comment.documentation_url}\n"
     return pretty_output
 
+
 def exit_if_not_in_git_repo() -> None:
     git_check_retcode, _, _ = local["git"]["rev-parse", "--is-inside-work-tree"].run(retcode=None)
 
     if git_check_retcode != 0:
         print("Not a git repository. Please run this script in a git repository.")
         sys.exit(1)
+
 
 def get_git_root() -> Path:
     """
@@ -39,9 +43,10 @@ def get_git_root() -> Path:
     except Exception as e:
         raise RuntimeError("Could not determine the Git root directory.") from e
 
+
 def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
     try:
-        response = httpx.get(f"http://{RECURSE_HOSTNAME}/api/check/{check_id}/")
+        response = client.get(f"/api/check/{check_id}/")
         response.raise_for_status()
         response_body = response.json()
         print(response_body)
@@ -49,23 +54,24 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         if comments is not None:
             comments = list(map(Comment.model_validate, comments))
         return (response_body["status"], comments)
-    except httpx.HTTPStatusError:
+    except HTTPStatusError:
         print(f"Error connecting to RECURSE_SERVER ({response.status_code})")
         sys.exit(1)
 
-def post_check(archive_filename: str, archive_path: Path, target_filenames: list[str]) -> None:
+def post_check(archive_filename: str, archive_path: Path, target_filenames: list[str]) -> str:
     try:
-        post_response = httpx.post(
-            f"http://{RECURSE_HOSTNAME}/api/check/",
+        post_response = client.post(
+            "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
             data={"target_filenames": target_filenames}
         )
 
         post_response.raise_for_status()
         return post_response.json()["check_id"]
-    except httpx.HTTPStatusError as e:
+    except HTTPStatusError as e:
         print(f"Error posting a check to RECURSE_SERVER ({e.response.status_code})")
         sys.exit(1)
+
 
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
@@ -82,9 +88,7 @@ def main(target_filenames: list[str]) -> None:
     # Recording the implicit assumptions here
     # Once we process the changes, these will become relevant
     base_commit = "HEAD"
-    head_commit = "INDEX" # current index state
-
-
+    head_commit = "INDEX"  # current index state
 
     # Gzip current repo at base_commit
     # Create a tarball from all tracked filenames
@@ -95,7 +99,7 @@ def main(target_filenames: list[str]) -> None:
     # HACK: assumes `.git/` repo is at the project root
     #       not always the case
     git_dir_filenames = local["find"][f"{git_root}/.git", "-type", "f"]().splitlines()
-    all_filenames =  git_dir_filenames + tracked_filenames + untracked_target_filenames
+    all_filenames = git_dir_filenames + tracked_filenames + untracked_target_filenames
 
     repo_dir_name = git_root.name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -120,3 +124,10 @@ def main(target_filenames: list[str]) -> None:
         print(pformat_comment(comment))
 
     print(f"Found {len(comments)} issues!")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    finally:
+        client.close()
