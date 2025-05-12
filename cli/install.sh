@@ -1,48 +1,70 @@
 #! /usr/bin/env bash
 
-echo "Installing RML"
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+trap 'echo "Error on line $LINENO"' ERR
 
-# TODO: make repo public and use GH release URL
-# https://github.com/Recurse-ML/rml/releases/rml.tar.gz
+# Configuration
 ARCHIVE_URL="https://storage.googleapis.com/squash-public/rml.tar.gz"
-INSTALL_DIR="/usr/local/share/" # TODO: allow configuring INSTALL_DIR
-BIN_DIR="/usr/local/bin/" # TODO: allow configuring BIN_DIR
+INSTALL_DIR="/usr/local/share"
+BIN_DIR="/usr/local/bin"
+TEMP_DIR="$(mktemp -d)"
+BACKUP_DIR="$(mktemp -d)"
 
-## Check Dependencies (git, tar, curl)
+cleanup() {
+    rm -rf "${TEMP_DIR}"
+}
+trap cleanup EXIT
 
-# git
-# TODO: display the full list of (missing) dependencies, upon failure
-if ! command -v git >/dev/null 2>&1; then
-    echo "Git is not installed!"
+# Check if running with necessary privileges
+if [ ! -w "$INSTALL_DIR" ] || [ ! -w "$BIN_DIR" ]; then
+    echo "Error: Installation requires write access to $INSTALL_DIR and $BIN_DIR"
     exit 1
 fi
 
-# tar
-if ! command -v tar >/dev/null 2>&1; then
-    echo "Tar is not installed!"
+# Check Dependencies
+declare -a DEPS=("git" "tar" "curl")
+for dep in "${DEPS[@]}"; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+        echo "Error: $dep is not installed!"
+        exit 1
+    fi
+done
+
+echo "Downloading rml.tar.gz"
+if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/rml.tar.gz"; then
+    echo "Error: Download failed"
     exit 1
 fi
 
-# curl
-if ! command -v curl >/dev/null 2>&1; then
-    echo "Curl is not installed!"
+if [ -d "$INSTALL_DIR/rml" ]; then
+    echo "Backing up existing installation directory to $BACKUP_DIR/rml"
+    mv "$INSTALL_DIR/rml" "$BACKUP_DIR/rml"
+fi
+
+# Install RML
+echo "Extracting rml.tar.gz to $INSTALL_DIR/rml"
+if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$INSTALL_DIR"; then
+    echo "Error: Extraction failed"
     exit 1
 fi
 
-## Install RML
-# Download single dir app
-curl $ARCHIVE_URL -o /tmp/rml.tar.gz
-tar -xzf /tmp/rml.tar.gz -C $INSTALL_DIR
+echo "Symlinking rml to $BIN_DIR/rml"
+if ! ln -sf "$INSTALL_DIR/rml/rml" "$BIN_DIR/rml"; then
+    echo "Error: Failed to create symbolic link"
+    exit 1
+fi
 
+# Verify installation
+echo "Finalizing installation (this might take a minute)"
+if ! $BIN_DIR/rml --help &> /dev/null; then
+    echo "Error: Installation verification failed"
+    exit 1
+fi
 
-# Ensures `rml` is in the PATH
-ln -s $INSTALL_DIR/rml/rml $BIN_DIR/rml
+if ! rml --help &> /dev/null; then
+    echo "WARNING: $BIN_DIR is not in your PATH, you should add it!"
+fi
 
-# Execute rml, to avoid cold start on first use
-nohup rml --help &> /dev/null &
-
-echo "Installed rml to $INSTALL_DIR/rml"
-echo "Now you can execute rml from anywhere in your terminal"
-echo "(if you can't, ensure $INSTALL_DIR is in your PATH)"
-
-# TODO: add detailed usage instructions
+echo "Successfully installed rml to $BIN_DIR/rml"
+echo "Check files for bugs using \"rml <target filename>\" from within your repo"
