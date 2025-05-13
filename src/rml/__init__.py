@@ -59,7 +59,6 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         print(f"Error connecting to RECURSE_SERVER ({response.status_code})")
         sys.exit(1)
 
-
 def post_check(archive_filename: str, archive_path: Path, target_filenames: list[str]) -> str:
     try:
         post_response = client.post(
