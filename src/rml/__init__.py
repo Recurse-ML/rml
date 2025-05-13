@@ -6,6 +6,7 @@ import time
 from httpx import Client, HTTPStatusError
 from plumbum import local
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rml.datatypes import Comment
 from rml.package_config import HOST
@@ -93,24 +94,26 @@ def main(target_filenames: list[str]) -> None:
 
     # Gzip current repo at base_commit
     # Create a tarball from all tracked filenames
-    tracked_filenames = local["git"]["ls-files"]().splitlines()
+    with local.cwd(git_root), TemporaryDirectory() as tempdir:
+        tracked_filenames = local["git"]["ls-files"]().splitlines()
 
-    untracked_target_filenames = list(set(target_filenames) - set(tracked_filenames))
+        untracked_target_filenames = list(set(target_filenames) - set(tracked_filenames))
 
-    # HACK: assumes `.git/` repo is at the project root
-    #       not always the case
-    git_dir_filenames = local["find"][f"{git_root}/.git", "-type", "f"]().splitlines()
-    all_filenames = git_dir_filenames + tracked_filenames + untracked_target_filenames
+        # HACK: assumes `.git/` repo is at the project root
+        #       not always the case
+        git_dir_filenames = local["find"][".git/", "-type", "f"]().splitlines()
 
-    repo_dir_name = git_root.name
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        all_filenames = git_dir_filenames + tracked_filenames + untracked_target_filenames
 
-    # HACK: main tempdir might not /tmp/
-    archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
-    archive_path = Path(f"/tmp/{archive_filename}")
-    local["tar"]["-czf", archive_path, *all_filenames]()
+        repo_dir_name = git_root.name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    check_id = post_check(archive_filename, archive_path, target_filenames)
+        archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
+        archive_path = Path(f"{tempdir}/{archive_filename}")
+        local["tar"]["-czf", archive_path, *all_filenames]()
+
+        check_id = post_check(archive_filename, archive_path, target_filenames)
+
     check_status, comments = get_check_status(check_id)
 
     while check_status not in ["completed", "error"]:
