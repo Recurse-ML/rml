@@ -23,6 +23,14 @@ class DiffLine(NamedTuple):
 
 
 
+class Diff(NamedTuple):
+    old_start_line_idx: int
+    new_start_line_idx: int
+    old_len: int
+    new_len: int
+    changes: list[DiffLine]
+
+
 class CommentClassification(Enum):
     TRUE_POSITIVE = "TRUE_POSITIVE"
     FALSE_POSITIVE = "FALSE_POSITIVE"
