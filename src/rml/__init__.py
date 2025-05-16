@@ -117,13 +117,13 @@ def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
 
 @wait(WAIT_TIME)
 def make_tar(
-    git_root: Path, all_filenames: list[str], tempdir: TemporaryDirectory, **kwargs
+    git_root: Path, all_filenames: list[str], tempdir: str, **kwargs
 ) -> dict[str, Any]:
     repo_dir_name = git_root.name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
-    archive_path = Path(f"{tempdir.name}/{archive_filename}")
+    archive_path = Path(f"{tempdir}/{archive_filename}")
     with local.cwd(git_root):
         try:
             local["tar"]["-czf", archive_path, *all_filenames]()
@@ -164,7 +164,6 @@ def post_check(
 def check_analysis_results(check_id: str, **kwargs):
     status_check_fn = get_check_status_mock if ENV == "testing" else get_check_status
     check_status, comments = status_check_fn(check_id)
-
     while check_status not in ["completed", "error"]:
         time.sleep(0.5)
         check_status, comments = status_check_fn(check_id)
@@ -191,13 +190,15 @@ def analyze(target_filenames: list[str]) -> None:
         Step(name="Sending tarball to server", func=post_check),
         Step(name="Collecting analysis results", func=check_analysis_results),
     ]
-    workflow = Workflow(
-        steps=workflow_steps,
-        console=console,
-        logger=logger,
-        inputs=dict(target_filenames=target_filenames),
-    )
-    workflow_output = workflow.run()
+    with TemporaryDirectory() as tempdir:
+        logger.info(f"Using temporary directory: {tempdir}")
+        workflow = Workflow(
+            steps=workflow_steps,
+            console=console,
+            logger=logger,
+            inputs=dict(target_filenames=target_filenames, tempdir=tempdir),
+        )
+        workflow_output = workflow.run()
     comments = workflow_output["comments"]
 
     render_comments(comments, console=console, logger=logger)
