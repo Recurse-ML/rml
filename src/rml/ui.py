@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Callable
 import rich
-from rich.console import group, Group
+from rich.console import Group
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
@@ -74,17 +74,19 @@ class Workflow:
         console: rich.console.Console,
         logger: logging.Logger,
         inputs: dict = {},
-        accumulate_outputs: bool = False,
     ):
         """
-        steps: dict of step_id -> (step name, executor function)
-        global_args: any kwargs to pass to each executor
+        Creates a workflow of linear steps to be executed in order.
+        When `run` is called, the outputs of each step are passed as inputs to the next step along with the
+        global `inputs` passed to every step.
+        Args:
+            steps: dict of step_id -> (step name, executor function)
+            inputs: any kwargs to pass to each executor
         """
         self.steps = steps
         self.inputs = inputs
         self.console = console
         self.logger = logger
-        self.accumulate_outputs = accumulate_outputs
 
     def render(self):
         table = Table.grid(padding=(0, 1))
@@ -93,29 +95,18 @@ class Workflow:
         return Panel(table, title="Workflow", border_style="cyan")
 
     def run(self) -> dict[str, Any]:
-        accumulated_output = {}
         with Live(self.render(), console=self.console, refresh_per_second=10) as live:
+            prev_output = {}
             for step in self.steps:
                 step.set_state(StepState.PENDING)
                 live.update(self.render())
 
                 try:
                     # Merge previous outputs and global args
-                    kwargs = {**accumulated_output, **self.inputs}
+                    kwargs = {**prev_output, **self.inputs}
                     result = step.func(**kwargs)
                     step.output = result or {}
-                    if self.accumulate_outputs:
-                        collision_keys = set(accumulated_output).intersection(
-                            step.output
-                        )
-                        if collision_keys:
-                            raise ValueError(
-                                f"Step '{step.name}' tried to overwrite keys already set: {collision_keys}"
-                            )
-
-                        accumulated_output.update(step.output)
-                    else:
-                        accumulated_output = step.output
+                    prev_output = step.output
                     step.set_state(StepState.DONE)
                 except Exception as e:
                     step.set_state(StepState.FAIL)
@@ -127,14 +118,31 @@ class Workflow:
 
         self.console.clear()
         self.console.print("[bold green]✅ Workflow finished.[/]")
-        return accumulated_output
+        return prev_output
 
 
-@group()
-def render_comment(comment: Comment, logger: logging.Logger, use_ruler: bool = False):
-    window_size = 50
+def make_comment_syntax(lines: list[str]) -> Syntax:
+    return Syntax(
+        "".join(lines),
+        "diff",
+        theme="ansi_dark",
+    )
 
-    panel = Panel(
+
+def render_comment(
+    comment: Comment,
+    logger: logging.Logger,
+    use_ruler: bool = False,
+    context_window: int = 50,
+) -> Group:
+    """
+    Renders a comment with diffs around the comment body.
+    Args:
+        - `context_window` controls how much context of the diff is displayed around each comment on both the sides.
+        - `use_ruler` draws a horizontal ruler below the comment if set.
+    """
+
+    comment_panel = Panel(
         comment.body,
         title=f"{comment.relative_path}:{comment.line_no}",
         style=Style(bold=True, bgcolor="black"),
@@ -151,54 +159,64 @@ def render_comment(comment: Comment, logger: logging.Logger, use_ruler: bool = F
             diffs_with_comment.append(diff)
 
     if len(diffs_with_comment) == 0:
-        logger.warning("Found a comment with no underlying diff")
-        yield panel
-        return
+        logger.warning(
+            f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
+        )
+        return Group(comment_panel)
 
     assert len(diffs_with_comment) == 1, (
         "Found multiple diffs containing the same lines, this should not happen"
     )
 
     diff = diffs_with_comment[0]
-    diff_str_lines = []
     diff_header = make_diff_header(diff)
+    diff_str_lines_before_comment = []
+    diff_str_lines_after_comment = []
 
     curr_old_line = diff.old_start_line_idx + 1
     curr_new_line = diff.new_start_line_idx + 1
 
     for change in diff.changes:
-        diff_str_lines.append(f"{change.operator.value}{change.content}")
+        if curr_new_line <= comment.line_no:
+            diff_str_lines_before_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
+        else:
+            diff_str_lines_after_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
 
         if change.old_line_idx is not None:
             curr_old_line += 1
         if change.new_line_idx is not None:
-            if curr_new_line == comment.line_no:
-                syntax = Syntax(
-                    "".join([diff_header] + diff_str_lines[-window_size:]),
-                    "diff",
-                    theme="ansi_dark",
-                )
-                yield syntax
-                yield panel
-                diff_str_lines = []
-
             curr_new_line += 1
+    ui_elements = []
 
-    if diff_str_lines:
-        syntax = Syntax(
-            "".join(diff_str_lines[:window_size]), "diff", theme="ansi_dark"
+    pre_comment_syntax = make_comment_syntax(
+        lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
+    )
+    ui_elements.append(pre_comment_syntax)
+    ui_elements.append(comment_panel)
+    if diff_str_lines_after_comment:
+        post_comment_syntax = make_comment_syntax(
+            lines=diff_str_lines_after_comment[:context_window],
         )
-        yield syntax
+        ui_elements.append(post_comment_syntax)
 
     if comment.documentation_url is not None:
-        yield Text(f"More info: {comment.documentation_url}\n")
+        ui_elements.append(Text(f"More info: {comment.documentation_url}\n"))
     if use_ruler:
-        yield Rule(style=Style(color="grey50"))
+        ui_elements.append(Rule(style=Style(color="grey50")))
+    return Group(*ui_elements)
 
 
 def render_comments(
     comments: list[Comment], console: rich.console.Console, logger: logging.Logger
 ):
+    """
+    Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
+    and renders the comments of that file in order along with their diffs.
+    """
     path_comment_map = defaultdict(list)
 
     for comment in comments:

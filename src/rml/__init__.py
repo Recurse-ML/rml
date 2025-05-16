@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 from rich.text import Text
 from rml.datatypes import Comment
 from rml.package_config import HOST, ENV, console, logger
-from rml.ui import Workflow, Step, display_comments
+from rml.ui import Workflow, Step, render_comments
 from rml.utils import wait
 
 WAIT_TIME = 1 if ENV != "prod" else 0
@@ -77,7 +77,7 @@ def get_check_status_mock(check_id: str) -> tuple[str, Optional[list[Comment]]]:
             ),
             Comment(
                 relative_path="src/rml/__init__.py",
-                line_no=110,
+                line_no=200,
                 body="This will cause another bug",
                 head_source="",
             ),
@@ -195,13 +195,12 @@ def analyze(target_filenames: list[str]) -> None:
         steps=workflow_steps,
         console=console,
         logger=logger,
-        accumulate_outputs=False,
         inputs=dict(target_filenames=target_filenames),
     )
     workflow_output = workflow.run()
     comments = workflow_output["comments"]
 
-    display_comments(comments, console=console, logger=logger)
+    render_comments(comments, console=console, logger=logger)
 
     summary_text = Text("Found ")
     summary_text += Text(
