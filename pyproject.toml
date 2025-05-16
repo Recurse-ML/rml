@@ -17,6 +17,20 @@ dependencies = [
     "rich",
 ]
 
+[project.optional-dependencies]
+
+test = [
+  "ruff >= 0.9",
+  "pytest >= 8.0",
+]
+
+[tool.ruff.lint]
+select = ["F", # Pyflakes
+          "I", # isort
+          "E"] # pycodestyle
+ignore = ["E501", # line-too-long, conflicting with formatter
+          "E731"] # assigning lambda's to variables is a honking good idea
+          
 [project.scripts]
 rml = "rml:main"
 
