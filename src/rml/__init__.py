@@ -13,9 +13,6 @@ from rich.text import Text
 from rml.datatypes import Comment
 from rml.package_config import HOST, ENV, console, logger
 from rml.ui import Workflow, Step, render_comments
-from rml.utils import wait
-
-WAIT_TIME = 1 if ENV != "prod" else 0
 
 client = Client(base_url=HOST)
 
@@ -91,7 +88,6 @@ def get_check_status_mock(check_id: str) -> tuple[str, Optional[list[Comment]]]:
     )
 
 
-@wait(WAIT_TIME)
 def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
@@ -115,7 +111,6 @@ def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
     )
 
 
-@wait(WAIT_TIME)
 def make_tar(
     git_root: Path, all_filenames: list[str], tempdir: str, **kwargs
 ) -> dict[str, Any]:
@@ -136,7 +131,6 @@ def make_tar(
     return dict(archive_filename=archive_filename, archive_path=archive_path)
 
 
-@wait(WAIT_TIME)
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
@@ -160,7 +154,6 @@ def post_check(
         raise e
 
 
-@wait(WAIT_TIME)
 def check_analysis_results(check_id: str, **kwargs):
     status_check_fn = get_check_status_mock if ENV == "testing" else get_check_status
     check_status, comments = status_check_fn(check_id)
