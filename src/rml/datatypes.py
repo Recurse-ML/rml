@@ -3,11 +3,13 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+
 class Operator(Enum):
     ADD = "+"
     REMOVE = "-"
     REPLACE = "R"
     NO_CHANGE = " "
+
 
 class DiffLine(NamedTuple):
     operator: Operator
@@ -22,7 +24,6 @@ class DiffLine(NamedTuple):
         return f"{old_line_idx}|{new_line_idx} {self.operator.value} {self.content}"
 
 
-
 class Diff(NamedTuple):
     old_start_line_idx: int
     new_start_line_idx: int
@@ -34,6 +35,7 @@ class Diff(NamedTuple):
 class CommentClassification(Enum):
     TRUE_POSITIVE = "TRUE_POSITIVE"
     FALSE_POSITIVE = "FALSE_POSITIVE"
+
 
 class Comment(BaseModel):
     relative_path: str

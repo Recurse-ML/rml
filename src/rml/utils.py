@@ -7,6 +7,7 @@ DIFF_HEADER_PTRN = re.compile(
 )
 DIFF_LINE_PTRN = re.compile(r"(?P<old_no>\d+|x)\|(?P<new_no>\d+|x)")
 
+
 def parse_diff_str_single_hunk(diff_str: str) -> Diff:
     """Parse a diff string consisting of a single hunk"""
     diff_str_lines = iter(diff_str.splitlines(keepends=True))
@@ -117,11 +118,12 @@ def make_diff_header(diff: Diff) -> str:
     return header
 
 
-
 def wait(secs):
     def decorator(func):
         def wrapper(*args, **kwargs):
             time.sleep(secs)
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

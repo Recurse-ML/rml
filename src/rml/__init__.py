@@ -9,13 +9,13 @@ from plumbum import ProcessExecutionError, local
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from collections import OrderedDict
 from rich.text import Text
 from rml.datatypes import Comment
-from rml.exceptions import GitRootException, NotAGitRepository
-from rml.package_config import HOST, gConsole, gLogger
-from rml.ui import Workflow, display_comments, render_comment
+from rml.package_config import HOST, ENV, console, logger
+from rml.ui import Workflow, Step, display_comments
 from rml.utils import wait
+
+WAIT_TIME = 1 if ENV != "prod" else 0
 
 client = Client(base_url=HOST)
 
@@ -26,7 +26,7 @@ def raise_if_not_in_git_repo() -> None:
     )
 
     if git_check_retcode != 0:
-        raise NotAGitRepository(
+        raise ValueError(
             "Not a git repository. Please run this script in a git repository."
         )
 
@@ -38,8 +38,8 @@ def get_git_root() -> Path:
     try:
         git_root = local["git"]["rev-parse", "--show-toplevel"]()
         return Path(git_root.strip())
-    except Exception as e:
-        raise GitRootException("Could not determine the Git root directory")
+    except Exception:
+        raise ValueError("Could not determine the Git root directory")
 
 
 def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
@@ -47,21 +47,21 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         response = client.get(f"/api/check/{check_id}/")
         response.raise_for_status()
         response_body = response.json()
-        gLogger.debug(response_body)
+        logger.debug(response_body)
         comments = response_body.get("comments", None)
         if comments is not None:
             comments = list(map(Comment.model_validate, comments))
         return (response_body["status"], comments)
     except pydantic.ValidationError as e:
-        gLogger.error("Failed to validate Comment model received from the server")
+        logger.error("Failed to validate Comment model received from the server")
         raise e
     except HTTPStatusError as e:
-        gLogger.error(
+        logger.error(
             f"Recurse.ML server returned a failure status code: ({response.status_code})"
         )
         raise e
     except RequestError as e:
-        gLogger.error("Error occured while connecting to recurse server")
+        logger.error("Error occured while connecting to recurse server")
         raise e
 
 
@@ -91,12 +91,14 @@ def get_check_status_mock(check_id: str) -> tuple[str, Optional[list[Comment]]]:
     )
 
 
-# @wait(1)
+@wait(WAIT_TIME)
 def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
     with local.cwd(git_root):
         tracked_filenames = local["git"]["ls-files"]().splitlines()
+        deleted_filenames = local["git"]["ls-files", "-d"]().splitlines()
+        tracked_filenames = list(set(tracked_filenames) - set(deleted_filenames))
 
         untracked_target_filenames = list(
             set(target_filenames) - set(tracked_filenames)
@@ -113,7 +115,7 @@ def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
     )
 
 
-# @wait(1)
+@wait(WAIT_TIME)
 def make_tar(
     git_root: Path, all_filenames: list[str], tempdir: TemporaryDirectory, **kwargs
 ) -> dict[str, Any]:
@@ -126,15 +128,15 @@ def make_tar(
         try:
             local["tar"]["-czf", archive_path, *all_filenames]()
         except ProcessExecutionError as e:
-            gLogger.error(f"Tar failed with exit code {e.retcode}")
-            gLogger.info(f"stdout: {e.stdout}")
-            gLogger.info(f"stderr: {e.stderr}")
+            logger.error(f"Tar failed with exit code {e.retcode}")
+            logger.info(f"stdout: {e.stdout}")
+            logger.info(f"stderr: {e.stderr}")
             raise e
 
     return dict(archive_filename=archive_filename, archive_path=archive_path)
 
 
-# @wait(1)
+@wait(WAIT_TIME)
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
@@ -149,25 +151,23 @@ def post_check(
 
         return dict(check_id=post_response.json()["check_id"])
     except HTTPStatusError as e:
-        gLogger.error(
+        logger.error(
             f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
         )
         raise e
     except RequestError as e:
-        gLogger.error("Error occured while POSTing data to Recurse server")
+        logger.error("Error occured while POSTing data to Recurse server")
         raise e
 
 
-# @wait(1)
+@wait(WAIT_TIME)
 def check_analysis_results(check_id: str, **kwargs):
-    check_status, comments = get_check_status(check_id)
-    ######### NOTE: TESTING CODE
-    # check_status, comments = get_check_status_mock(check_id)
-    ###########
+    status_check_fn = get_check_status_mock if ENV == "testing" else get_check_status
+    check_status, comments = status_check_fn(check_id)
 
     while check_status not in ["completed", "error"]:
         time.sleep(0.5)
-        check_status, comments = get_check_status(check_id)
+        check_status, comments = status_check_fn(check_id)
     if comments is None:
         raise ValueError(
             "Could not analyze the results, server did not respond with comments"
@@ -178,31 +178,30 @@ def check_analysis_results(check_id: str, **kwargs):
 def analyze(target_filenames: list[str]) -> None:
     """Checks for bugs in target_filenames."""
     if len(target_filenames) == 0:
-        gLogger.warning("No target file, no bugs!")
+        logger.warning("No target file, no bugs!")
         return
     # Recording the implicit assumptions here
     # Once we process the changes, these will become relevant
     base_commit = "HEAD"
     head_commit = "INDEX"  # current index state
 
-    workflow_steps = OrderedDict(
-        [
-            ("git_files", ("Analyze git repo", get_files_to_zip)),
-            ("tarball", ("Tarballing repo files", make_tar)),
-            ("post_tar", ("Sending tarball to server", post_check)),
-            ("wait_for_res", ("Collecting analysis results", check_analysis_results)),
-        ]
-    )
+    workflow_steps = [
+        Step(name="Analyze git repo", func=get_files_to_zip),
+        Step(name="Tarballing repo files", func=make_tar),
+        Step(name="Sending tarball to server", func=post_check),
+        Step(name="Collecting analysis results", func=check_analysis_results),
+    ]
     workflow = Workflow(
         steps=workflow_steps,
-        console=gConsole,
-        logger=gLogger,
-        target_filenames=target_filenames,
+        console=console,
+        logger=logger,
+        accumulate_outputs=False,
+        inputs=dict(target_filenames=target_filenames),
     )
     workflow_output = workflow.run()
     comments = workflow_output["comments"]
 
-    display_comments(comments, console=gConsole, logger=gLogger)
+    display_comments(comments, console=console, logger=logger)
 
     summary_text = Text("Found ")
     summary_text += Text(
@@ -210,18 +209,24 @@ def analyze(target_filenames: list[str]) -> None:
         style="white on red" if len(comments) > 0 else "white on blue",
     )
     summary_text += " issues!"
-    gConsole.print(summary_text)
+    console.print(summary_text)
 
 
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
-def main(target_filenames: list[str]) -> None:
+def main(target_filenames: list[str]) -> int:
+    ret_code = 0
+
     try:
         analyze(target_filenames)
     except Exception as e:
-        gLogger.error(f"\nAn error occured: {e}\nPlease report this to abc@discord.com")
+        logger.exception(
+            f"\nAn error occured: {e}\nPlease report this to abc@discord.com"
+        )
+        ret_code = 1
     finally:
         client.close()
+    return ret_code
 
 
 if __name__ == "__main__":
