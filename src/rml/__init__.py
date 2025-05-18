@@ -66,32 +66,6 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         raise e
 
 
-def get_check_status_mock(check_id: str) -> tuple[str, Optional[list[Comment]]]:
-    return (
-        "completed",
-        [
-            Comment(
-                relative_path="src/rml/__init__.py",
-                line_no=80,
-                body="This will cause some bug",
-                head_source="",
-            ),
-            Comment(
-                relative_path="src/rml/__init__.py",
-                line_no=200,
-                body="This will cause another bug",
-                head_source="",
-            ),
-            Comment(
-                relative_path="src/rml/datatypes.py",
-                line_no=30,
-                body="This will not integrate well",
-                head_source="",
-            ),
-        ],
-    )
-
-
 def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
