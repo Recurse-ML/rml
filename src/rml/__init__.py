@@ -46,6 +46,7 @@ def get_git_root() -> Path:
 
 
 def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
+    # TODO: retry on server errors
     try:
         response = client.get(f"/api/check/{check_id}/")
         response.raise_for_status()
@@ -64,7 +65,8 @@ def post_check(archive_filename: str, archive_path: Path, target_filenames: list
         post_response = client.post(
             "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
-            data={"target_filenames": target_filenames}
+            data={"target_filenames": target_filenames},
+            timeout=None,
         )
 
         post_response.raise_for_status()
