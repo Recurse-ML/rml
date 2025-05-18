@@ -1,7 +1,7 @@
-import logging
-from typing import Any, Callable
 import rich
-from rich.console import Group
+from logging import Logger
+from typing import Any, Callable
+from rich.console import Group, Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
@@ -71,8 +71,8 @@ class Workflow:
     def __init__(
         self,
         steps: list[Step],
-        console: rich.console.Console,
-        logger: logging.Logger,
+        console: Console,
+        logger: Logger,
         inputs: dict = {},
     ):
         """
@@ -117,7 +117,7 @@ class Workflow:
                 live.update(self.render())
 
         self.console.clear()
-        self.console.print("[bold green]✅ Workflow finished.[/]")
+        self.console.print("[bold green]✅ Analysis finished.[/]")
         return prev_output
 
 
@@ -131,7 +131,7 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
 
 def render_comment(
     comment: Comment,
-    logger: logging.Logger,
+    logger: Logger,
     use_ruler: bool = False,
     context_window: int = 50,
 ) -> Group:
@@ -211,7 +211,7 @@ def render_comment(
 
 
 def render_comments(
-    comments: list[Comment], console: rich.console.Console, logger: logging.Logger
+    comments: list[Comment], console: Console, logger: Logger
 ):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel

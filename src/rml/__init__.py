@@ -184,12 +184,12 @@ def analyze(target_filenames: list[str]) -> None:
 
     render_comments(comments, console=console, logger=logger)
 
-    summary_text = Text("Found ")
-    summary_text += Text(
-        f"{len(comments)}",
-        style="white on red" if len(comments) > 0 else "white on blue",
-    )
-    summary_text += " issues!"
+    if len(comments) == 0:
+        summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
+
+    else:
+        summary_text = Text(f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱")
+
     console.print(summary_text)
 
 
