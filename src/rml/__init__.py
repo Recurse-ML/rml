@@ -65,7 +65,7 @@ def post_check(archive_filename: str, archive_path: Path, target_filenames: list
             "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
             data={"target_filenames": target_filenames},
-            timeout=10.0
+            timeout=20.0
         )
 
         post_response.raise_for_status()
