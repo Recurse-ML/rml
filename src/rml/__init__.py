@@ -143,7 +143,7 @@ def post_check(
             "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
             data={"target_filenames": target_filenames},
-            timeout=20,
+            timeout=100,
         )
 
         post_response.raise_for_status()
@@ -197,7 +197,7 @@ def analyze(target_filenames: list[str]) -> None:
         Step(name="Collecting analysis results", func=check_analysis_results),
     ]
     with TemporaryDirectory() as tempdir:
-        logger.info(f"Using temporary directory: {tempdir}")
+        logger.debug(f"Using temporary directory: {tempdir}")
         workflow = Workflow(
             steps=workflow_steps,
             console=console,
