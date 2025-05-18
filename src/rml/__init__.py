@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 
 from rich.text import Text
 from rml.datatypes import Comment
-from rml.package_config import HOST, ENV, console, logger
+from rml.package_config import HOST, console, logger
 from rml.ui import Workflow, Step, render_comments
 
 client = Client(base_url=HOST)
@@ -156,11 +156,10 @@ def post_check(
 
 
 def check_analysis_results(check_id: str, **kwargs):
-    status_check_fn = get_check_status_mock if ENV == "testing" else get_check_status
-    check_status, comments = status_check_fn(check_id)
+    check_status, comments = get_check_status(check_id)
     while check_status not in ["completed", "error"]:
         time.sleep(0.5)
-        check_status, comments = status_check_fn(check_id)
+        check_status, comments = get_check_status(check_id)
     if comments is None:
         raise ValueError(
             "Could not analyze the results, server did not respond with comments"
