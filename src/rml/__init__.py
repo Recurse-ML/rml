@@ -117,7 +117,7 @@ def main(target_filenames: list[str]) -> None:
 
     check_status, comments = get_check_status(check_id)
 
-    while check_status not in ["completed", "error"]:
+    while check_status not in ["success", "error"]:
         time.sleep(0.5)
         check_status, comments = get_check_status(check_id)
 
