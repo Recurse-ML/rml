@@ -1,26 +1,13 @@
-import logging
 import os
-from rich.console import Console
+from pathlib import Path
 from rich.logging import RichHandler
 
-LOG_LEVEL = logging.INFO
-LOG_FORMAT = "%(message)s"
+_current_dir = Path(__file__).parent
+PROJECT_ROOT = (_current_dir / "../../").resolve()
 
-console = Console()
+LOG_LEVEL = "DEBUG"
+LOG_DIR = PROJECT_ROOT / "logs"
 
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format=LOG_FORMAT,
-    handlers=[
-        RichHandler(
-            rich_tracebacks=True,
-            console=console,
-            show_time=False,
-        )
-    ],
-)
-
-logger = logging.getLogger("rml")
 
 if os.getenv("U_HOST") is not None:
     HOST = os.getenv("U_HOST")

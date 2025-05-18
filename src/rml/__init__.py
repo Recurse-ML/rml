@@ -10,8 +10,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from rich.text import Text
+from rich.console import Console
+from rich.logging import RichHandler
+
 from rml.datatypes import Comment
-from rml.package_config import HOST, console, logger
+from rml.package_config import HOST
+from rml.package_logger import logger
 from rml.ui import Workflow, Step, render_comments
 
 client = Client(base_url=HOST)
@@ -169,9 +173,18 @@ def check_analysis_results(check_id: str, **kwargs):
 
 def analyze(target_filenames: list[str]) -> None:
     """Checks for bugs in target_filenames."""
+    console = Console()
+    handler = RichHandler(
+        rich_tracebacks=True,
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
     if len(target_filenames) == 0:
         logger.warning("No target file, no bugs!")
         return
+
     # Recording the implicit assumptions here
     # Once we process the changes, these will become relevant
     base_commit = "HEAD"
