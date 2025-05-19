@@ -14,7 +14,7 @@ from rich.text import Text
 from rich.console import Console
 from rich.logging import RichHandler
 
-from rml.datatypes import Comment
+from rml.datatypes import Comment, DiffLine, Operator
 from rml.package_config import HOST
 from rml.package_logger import logger
 from rml.ui import Workflow, Step, render_comments
@@ -189,7 +189,9 @@ def analyze(target_filenames: list[str]) -> None:
         summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
 
     else:
-        summary_text = Text(f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱")
+        summary_text = Text(
+            f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
+        )
 
     console.print(summary_text)
 
