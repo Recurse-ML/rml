@@ -97,6 +97,7 @@ def get_files_to_zip(
         # Export files at base commit
         for filename in all_filenames:
             try:
+                # TODO: what does git show look like in failure cases?
                 file_content = local["git"]["show", f"{base_commit}:{filename}"]()
                 file_path = base_dir / filename
                 file_path.parent.mkdir(parents=True, exist_ok=True)
