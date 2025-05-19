@@ -19,7 +19,11 @@ from plumbum import local
 
 from rml.datatypes import Comment
 
-from rml.utils import parse_diff_str_multi_hunk, make_diff_header
+from rml.utils import (
+    parse_diff_str_multi_hunk,
+    make_diff_header,
+    get_language_from_path,
+)
 
 
 class StepState(Enum):
@@ -168,7 +172,8 @@ def enrich_affected_locations(markdown_content: str) -> str:
                     file_lines = f.readlines()
                     if 0 <= line_no - 1 < len(file_lines):
                         content = file_lines[line_no - 1].rstrip()
-                        enriched_locations.append(f"```python\n{content}\n```\n")
+                        language = get_language_from_path(path)
+                        enriched_locations.append(f"```{language}\n{content}\n```\n")
             except (IOError, IndexError):
                 continue
 

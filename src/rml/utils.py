@@ -127,3 +127,55 @@ def wait(secs):
         return wrapper
 
     return decorator
+
+
+def get_language_from_path(file_path: str) -> str:
+    """
+    Maps a file path to its corresponding language identifier for syntax highlighting.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        The language identifier string suitable for syntax highlighting
+    """
+    extension_map = {
+        ".py": "python",
+        ".js": "javascript",
+        ".ts": "typescript",
+        ".jsx": "jsx",
+        ".tsx": "tsx",
+        ".html": "html",
+        ".css": "css",
+        ".scss": "scss",
+        ".java": "java",
+        ".cpp": "cpp",
+        ".c": "c",
+        ".rs": "rust",
+        ".go": "go",
+        ".rb": "ruby",
+        ".php": "php",
+        ".sh": "bash",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+        ".json": "json",
+        ".md": "markdown",
+        ".sql": "sql",
+        ".kt": "kotlin",
+        ".swift": "swift",
+        ".r": "r",
+        ".scala": "scala",
+        ".pl": "perl",
+        ".lua": "lua",
+        ".ex": "elixir",
+        ".exs": "elixir",
+        ".hs": "haskell",
+        ".fs": "fsharp",
+        ".xml": "xml",
+        ".cs": "csharp",
+    }
+
+    import os
+
+    _, ext = os.path.splitext(file_path.lower())
+    return extension_map.get(ext, "text")
