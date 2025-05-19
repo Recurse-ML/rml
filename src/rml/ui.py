@@ -129,6 +129,10 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
+def parse_affected_locations(comment: Comment) -> list[tuple[str, int]]:
+    pass
+
+
 def render_comment(
     comment: Comment,
     logger: Logger,
@@ -148,9 +152,13 @@ def render_comment(
         comment.body.strip().startswith("This change breaks")
         and "## Symbol" in comment.body
     ):
-        markdown = Markdown(comment.body)
+        with open(comment.relative_path, "r") as f:
+            line_content = f.readlines()[comment.line_no - 1].rstrip()
+
+        markdown_content = line_content + "\n" + comment.body + "\n"
+
         comment_panel = Panel(
-            markdown,
+            Markdown(markdown_content),
             title=f"{comment.relative_path}:{comment.line_no}",
             style=Style(bold=True, bgcolor="black"),
         )

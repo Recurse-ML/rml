@@ -200,7 +200,7 @@ def analyze(target_filenames: list[str]) -> None:
 
 def create_mock_breaking_change_comments() -> list[Comment]:
     bc_1 = Comment(
-        relative_path="src/squash/comment_classifier",
+        relative_path="src/squash/comment_classifier.py",
         line_no=10,
         body=dedent("""
         This change breaks 1 usages of `classify_comment` across 1 files
@@ -241,7 +241,6 @@ def create_mock_breaking_change_comments() -> list[Comment]:
             operator=Operator.REMOVE,
             content="This change breaks 1 usages of `classify_comment` across 1 files",
         ),
-        documentation_url="https://example.com/breaking-change",
     )
     return [bc_1]
 
