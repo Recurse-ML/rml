@@ -209,7 +209,7 @@ def create_mock_breaking_change_comments() -> list[Comment]:
         The function classify_comment has been modified to always return CommentClassification.TRUE_POSITIVE regardless of input, breaking the previous behavior where it would return different classifications based on LLM analysis or None in case of errors. This breaks code that relies on receiving either None or varying classification values, such as the add_classification_to_comment function which uses this result to set comment.classification.
         ## Affected locations
 
-        src/squash/comment_classifier.py:57'
+        src/squash/comment_classifier.py:57
         """),
         head_source=dedent("""
         def classify_comment(comment: str, model: Any) -> Optional[CommentClassification]:
