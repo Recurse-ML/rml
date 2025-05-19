@@ -210,9 +210,7 @@ def render_comment(
     return Group(*ui_elements)
 
 
-def render_comments(
-    comments: list[Comment], console: Console, logger: Logger
-):
+def render_comments(comments: list[Comment], console: Console, logger: Logger):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
     and renders the comments of that file in order along with their diffs.
