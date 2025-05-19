@@ -1,4 +1,5 @@
 import sys
+from textwrap import dedent
 import click
 import pydantic
 
@@ -190,35 +191,30 @@ def analyze(target_filenames: list[str]) -> None:
         summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
 
     else:
-        summary_text = Text(f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱")
+        summary_text = Text(
+            f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
+        )
 
     console.print(summary_text)
-
 
 
 def create_mock_breaking_change_comments() -> list[Comment]:
     bc_1 = Comment(
         relative_path="src/squash/comment_classifier",
         line_no=10,
-        body="""'This change breaks 1 usages of `classify_comment` across 1 files
+        body=dedent("""
+        This change breaks 1 usages of `classify_comment` across 1 files
         ## Symbol: `classify_comment`
 
         The function classify_comment has been modified to always return CommentClassification.TRUE_POSITIVE regardless of input, breaking the previous behavior where it would return different classifications based on LLM analysis or None in case of errors. This breaks code that relies on receiving either None or varying classification values, such as the add_classification_to_comment function which uses this result to set comment.classification.
         ## Affected locations
 
         src/squash/comment_classifier.py:57'
-        Context:
-        '''
-            # logger.debug(f"Model classified comment as {classification}")
-            # return classification
-            return CommentClassification.TRUE_POSITIVE
-
-
-        '''
-        """,
-        head_source="""def classify_comment(comment: str, model: Any) -> Optional[CommentClassification]:
-        '''Classifies a comment using the provided model.
-        
+        """),
+        head_source=dedent("""
+        def classify_comment(comment: str, model: Any) -> Optional[CommentClassification]:
+            '''Classifies a comment using the provided model.
+            
         Args:
             comment: The comment text to classify
             model: The LLM model to use for classification
@@ -239,7 +235,8 @@ def create_mock_breaking_change_comments() -> list[Comment]:
 
         except Exception as e:
             logger.error(f"Failed to classify comment: {e}")
-            return None""",
+            return None
+        """),
         diff_line=DiffLine(
             operator=Operator.REMOVE,
             content="This change breaks 1 usages of `classify_comment` across 1 files",
