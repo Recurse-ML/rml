@@ -140,6 +140,10 @@ def check_analysis_results(check_id: str, **kwargs):
     while check_status not in ["success", "error"]:
         time.sleep(0.5)
         check_status, comments = get_check_status(check_id)
+
+    if check_status == "error":
+        raise RuntimeError("Error occurred while analyzing the code")
+
     if comments is None:
         raise ValueError(
             "Could not analyze the results, server did not respond with comments"
@@ -151,7 +155,6 @@ def analyze(target_filenames: list[str]) -> None:
     """Checks for bugs in target_filenames."""
     console = Console()
     handler = RichHandler(
-        rich_tracebacks=True,
         console=console,
         show_time=False,
     )
@@ -200,7 +203,7 @@ def main(target_filenames: list[str]) -> int:
     try:
         analyze(target_filenames)
     except Exception as e:
-        logger.exception(
+        logger.error(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
