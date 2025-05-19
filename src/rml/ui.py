@@ -129,42 +129,6 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def parse_affected_locations(comment: Comment) -> list[tuple[str, int]]:
-    """
-    Parses the affected locations section from a breaking change comment.
-
-    Args:
-        comment: The breaking change comment to parse
-
-    Returns:
-        A list of tuples containing (relative_path, line_number) for each affected location
-    """
-    affected_locations = []
-
-    # Find the affected locations section
-    affected_section_marker = "## Affected locations"
-    if affected_section_marker not in comment.body:
-        return []
-
-    # Get the text after the section marker
-    section_text = comment.body.split(affected_section_marker)[1].strip()
-
-    # Split into lines and process each location
-    for line in section_text.split("\n"):
-        line = line.strip()
-        if len(line) == 0:
-            continue
-
-        # Parse the path:line_no format
-        try:
-            path, line_no = line.split(":")
-            affected_locations.append((path.strip(), int(line_no.strip("'"))))
-        except (ValueError, IndexError):
-            continue
-
-    return affected_locations
-
-
 def enrich_affected_locations(comment: Comment, markdown_content: str) -> str:
     """
     Enriches the affected locations section in the markdown content by adding the actual
