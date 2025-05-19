@@ -1,5 +1,4 @@
 import sys
-from textwrap import dedent
 import click
 import pydantic
 
