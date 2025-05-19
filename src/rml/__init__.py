@@ -67,45 +67,87 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         raise e
 
 
-def get_files_to_zip(target_filenames: list[str], **kwargs) -> dict[str, Any]:
+def get_files_to_zip(
+    target_filenames: list[str],
+    tempdir: Path,
+    base_commit: str,
+    head_commit: str,
+    **kwargs,
+) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
+
+    # Create base and head directories
+    base_dir = tempdir / "base"
+    head_dir = tempdir / "head"
+    base_dir.mkdir(exist_ok=True)
+    head_dir.mkdir(exist_ok=True)
+
     with local.cwd(git_root):
+        # Get list of tracked files
         tracked_filenames = local["git"]["ls-files"]().splitlines()
         deleted_filenames = local["git"]["ls-files", "-d"]().splitlines()
         tracked_filenames = list(set(tracked_filenames) - set(deleted_filenames))
-
         untracked_target_filenames = list(
             set(target_filenames) - set(tracked_filenames)
         )
 
-        # HACK: assumes `.git/` repo is at the project root
-        #       not always the case
-        git_dir_filenames = local["find"][".git/", "-type", "f"]().splitlines()
-    all_filenames = git_dir_filenames + tracked_filenames + untracked_target_filenames
+        all_filenames = tracked_filenames + untracked_target_filenames
+
+        # Export files at base commit
+        for filename in all_filenames:
+            try:
+                file_content = local["git"]["show", f"{base_commit}:{filename}"]()
+                file_path = base_dir / filename
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(file_content)
+            except ProcessExecutionError:
+                logger.debug(f"File {filename} not found in {base_commit=}")
+
+        # Export files at head commit
+        for filename in all_filenames:
+            try:
+                file_content = local["git"]["show", f"{head_commit}:{filename}"]()
+                file_path = head_dir / filename
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(file_content)
+            except ProcessExecutionError:
+                logger.debug(f"File {filename} not found in {head_commit=}")
 
     return dict(
         git_root=git_root,
         all_filenames=all_filenames,
+        base_dir=base_dir,
+        head_dir=head_dir,
     )
 
 
 def make_tar(
-    git_root: Path, all_filenames: list[str], tempdir: str, **kwargs
+    git_root: Path, base_dir: Path, head_dir: Path, tempdir: Path, **kwargs
 ) -> dict[str, Any]:
     repo_dir_name = git_root.name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
     archive_path = Path(f"{tempdir}/{archive_filename}")
-    with local.cwd(git_root):
-        try:
-            local["tar"]["-czf", archive_path, *all_filenames]()
-        except ProcessExecutionError as e:
-            logger.error(f"Tar failed with exit code {e.retcode}")
-            logger.info(f"stdout: {e.stdout}")
-            logger.info(f"stderr: {e.stderr}")
-            raise e
+
+    try:
+        with local.cwd(tempdir):
+            local["tar"][
+                "-czf",
+                archive_path,
+                "-C",
+                base_dir.parent,
+                base_dir.name,
+                "-C",
+                head_dir.parent,
+                head_dir.name,
+            ]()
+    except ProcessExecutionError as e:
+        logger.error(f"Tar failed with exit code {e.retcode}")
+        logger.info(f"stdout: {e.stdout}")
+        logger.info(f"stderr: {e.stderr}")
+        raise e
 
     return dict(archive_filename=archive_filename, archive_path=archive_path)
 
@@ -146,7 +188,7 @@ def check_analysis_results(check_id: str, **kwargs):
     return dict(check_status=check_status, comments=comments)
 
 
-def analyze(target_filenames: list[str]) -> None:
+def analyze(target_filenames: list[str], base: str, head: str) -> None:
     """Checks for bugs in target_filenames."""
     console = Console()
     handler = RichHandler(
@@ -162,8 +204,8 @@ def analyze(target_filenames: list[str]) -> None:
 
     # Recording the implicit assumptions here
     # Once we process the changes, these will become relevant
-    base_commit = "HEAD"
-    head_commit = "INDEX"  # current index state
+    base_commit = base
+    head_commit = head  # current index state
 
     workflow_steps = [
         Step(name="Analyze git repo", func=get_files_to_zip),
@@ -177,7 +219,12 @@ def analyze(target_filenames: list[str]) -> None:
             steps=workflow_steps,
             console=console,
             logger=logger,
-            inputs=dict(target_filenames=target_filenames, tempdir=tempdir),
+            inputs=dict(
+                target_filenames=target_filenames,
+                tempdir=Path(tempdir),
+                base_commit=base_commit,
+                head_commit=head_commit,
+            ),
         )
         workflow_output = workflow.run()
     comments = workflow_output["comments"]
@@ -188,18 +235,22 @@ def analyze(target_filenames: list[str]) -> None:
         summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
 
     else:
-        summary_text = Text(f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱")
+        summary_text = Text(
+            f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
+        )
 
     console.print(summary_text)
 
 
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
-def main(target_filenames: list[str]) -> int:
+@click.option("--base", default="HEAD~1", help="Base commit to compare against")
+@click.option("--head", default="HEAD", help="Head commit to analyze")
+def main(target_filenames: list[str], base: str, head: str) -> int:
     ret_code = 0
 
     try:
-        analyze(target_filenames)
+        analyze(target_filenames, base=base, head=head)
     except Exception as e:
         logger.exception(
             f"\nAn error occured: {e}\nPlease report this to abc@discord.com"
