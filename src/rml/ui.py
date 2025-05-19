@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.style import Style
 from rich.rule import Rule
-
+from rich.markdown import Markdown
 
 from collections import defaultdict
 
@@ -137,71 +137,85 @@ def render_comment(
 ) -> Group:
     """
     Renders a comment with diffs around the comment body.
+    For breaking change comments, renders the markdown formatted message without diffs.
     Args:
         - `context_window` controls how much context of the diff is displayed around each comment on both the sides.
         - `use_ruler` draws a horizontal ruler below the comment if set.
     """
-
-    comment_panel = Panel(
-        comment.body,
-        title=f"{comment.relative_path}:{comment.line_no}",
-        style=Style(bold=True, bgcolor="black"),
-    )
-    # TODO: get git diff from API.
-    git_diff = local["git"]["diff", comment.relative_path]()
-    parsed_output = parse_diff_str_multi_hunk(git_diff)
-    diffs_with_comment = []
-
-    for diff in parsed_output:
-        diff_new_start_line_no = diff.new_start_line_idx + 1
-        diff_new_end_line_no = diff_new_start_line_no + diff.new_len
-        if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
-            diffs_with_comment.append(diff)
-
-    if len(diffs_with_comment) == 0:
-        logger.warning(
-            f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
-        )
-        return Group(comment_panel)
-
-    assert len(diffs_with_comment) == 1, (
-        "Found multiple diffs containing the same lines, this should not happen"
-    )
-
-    diff = diffs_with_comment[0]
-    diff_header = make_diff_header(diff)
-    diff_str_lines_before_comment = []
-    diff_str_lines_after_comment = []
-
-    curr_old_line = diff.old_start_line_idx + 1
-    curr_new_line = diff.new_start_line_idx + 1
-
-    for change in diff.changes:
-        if curr_new_line <= comment.line_no:
-            diff_str_lines_before_comment.append(
-                f"{change.operator.value}{change.content}"
-            )
-        else:
-            diff_str_lines_after_comment.append(
-                f"{change.operator.value}{change.content}"
-            )
-
-        if change.old_line_idx is not None:
-            curr_old_line += 1
-        if change.new_line_idx is not None:
-            curr_new_line += 1
     ui_elements = []
 
-    pre_comment_syntax = make_comment_syntax(
-        lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
-    )
-    ui_elements.append(pre_comment_syntax)
-    ui_elements.append(comment_panel)
-    if diff_str_lines_after_comment:
-        post_comment_syntax = make_comment_syntax(
-            lines=diff_str_lines_after_comment[:context_window],
+    if (
+        comment.body.strip().startswith("This change breaks")
+        and "## Symbol" in comment.body
+    ):
+        markdown = Markdown(comment.body)
+        comment_panel = Panel(
+            markdown,
+            title=f"{comment.relative_path}:{comment.line_no}",
+            style=Style(bold=True, bgcolor="black"),
         )
-        ui_elements.append(post_comment_syntax)
+        ui_elements.append(comment_panel)
+    else:
+        comment_panel = Panel(
+            comment.body,
+            title=f"{comment.relative_path}:{comment.line_no}",
+            style=Style(bold=True, bgcolor="black"),
+        )
+        ui_elements.append(comment_panel)
+
+        # TODO: get git diff from API.
+        git_diff = local["git"]["diff", comment.relative_path]()
+        parsed_output = parse_diff_str_multi_hunk(git_diff)
+        diffs_with_comment = []
+
+        for diff in parsed_output:
+            diff_new_start_line_no = diff.new_start_line_idx + 1
+            diff_new_end_line_no = diff_new_start_line_no + diff.new_len
+            if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
+                diffs_with_comment.append(diff)
+
+        if len(diffs_with_comment) == 0:
+            logger.warning(
+                f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
+            )
+        else:
+            assert len(diffs_with_comment) == 1, (
+                "Found multiple diffs containing the same lines, this should not happen"
+            )
+
+            diff = diffs_with_comment[0]
+            diff_header = make_diff_header(diff)
+            diff_str_lines_before_comment = []
+            diff_str_lines_after_comment = []
+
+            curr_old_line = diff.old_start_line_idx + 1
+            curr_new_line = diff.new_start_line_idx + 1
+
+            for change in diff.changes:
+                if curr_new_line <= comment.line_no:
+                    diff_str_lines_before_comment.append(
+                        f"{change.operator.value}{change.content}"
+                    )
+                else:
+                    diff_str_lines_after_comment.append(
+                        f"{change.operator.value}{change.content}"
+                    )
+
+                if change.old_line_idx is not None:
+                    curr_old_line += 1
+                if change.new_line_idx is not None:
+                    curr_new_line += 1
+
+            pre_comment_syntax = make_comment_syntax(
+                lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
+            )
+            ui_elements.insert(0, pre_comment_syntax)
+
+            if diff_str_lines_after_comment:
+                post_comment_syntax = make_comment_syntax(
+                    lines=diff_str_lines_after_comment[:context_window],
+                )
+                ui_elements.append(post_comment_syntax)
 
     if comment.documentation_url is not None:
         ui_elements.append(Text(f"More info: {comment.documentation_url}\n"))
@@ -210,9 +224,7 @@ def render_comment(
     return Group(*ui_elements)
 
 
-def render_comments(
-    comments: list[Comment], console: Console, logger: Logger
-):
+def render_comments(comments: list[Comment], console: Console, logger: Logger):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
     and renders the comments of that file in order along with their diffs.
