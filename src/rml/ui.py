@@ -129,29 +129,28 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_affected_locations(comment: Comment, markdown_content: str) -> str:
+def enrich_affected_locations(markdown_content: str) -> str:
     """
     Enriches the affected locations section in the markdown content by adding the actual
     file content for each referenced location.
 
     Args:
-        comment: The breaking change comment
         markdown_content: The markdown content to enrich
 
     Returns:
         The enriched markdown content with file contents added after each location
     """
-    # Find the affected locations section
     affected_section_marker = "## Affected locations"
     if affected_section_marker not in markdown_content:
         return markdown_content
 
-    # Split content into pre-section and section parts
-    pre_section, section = markdown_content.split(affected_section_marker)
+    prev_context, affected_locations_section = markdown_content.split(
+        affected_section_marker
+    )
     enriched_locations = []
 
     # Process each line in the section
-    for line in section.strip().split("\n"):
+    for line in affected_locations_section.strip().split("\n"):
         line = line.strip()
         if len(line) == 0:
             continue
@@ -164,7 +163,6 @@ def enrich_affected_locations(comment: Comment, markdown_content: str) -> str:
             path = path.strip()
             line_no = int(line_no.strip("'"))
 
-            # Read the referenced file
             try:
                 with open(path, "r") as f:
                     file_lines = f.readlines()
@@ -172,15 +170,13 @@ def enrich_affected_locations(comment: Comment, markdown_content: str) -> str:
                         content = file_lines[line_no - 1].rstrip()
                         enriched_locations.append(f"```python\n{content}\n```\n")
             except (IOError, IndexError):
-                # Skip if file can't be read or line number is invalid
                 continue
 
         except (ValueError, IndexError):
             continue
 
-    # Reconstruct the markdown with enriched content
     return (
-        pre_section + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
+        prev_context + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
     )
 
 
@@ -207,7 +203,7 @@ def render_comment(
             line_content = f.readlines()[comment.line_no - 1].rstrip()
 
         markdown_content = line_content + "\n" + comment.body + "\n"
-        markdown_content = enrich_affected_locations(comment, markdown_content)
+        markdown_content = enrich_affected_locations(markdown_content)
 
         comment_panel = Panel(
             Markdown(markdown_content),
