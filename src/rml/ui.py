@@ -1,3 +1,4 @@
+from pathlib import Path
 import rich
 from logging import Logger
 from typing import Any, Callable
@@ -153,7 +154,6 @@ def enrich_affected_locations(markdown_content: str) -> str:
     )
     enriched_locations = []
 
-    # Process each line in the section
     for line in affected_locations_section.strip().split("\n"):
         line = line.strip()
         if len(line) == 0:
@@ -161,23 +161,20 @@ def enrich_affected_locations(markdown_content: str) -> str:
 
         enriched_locations.append(line)
 
-        # Try to parse the location and add file content
         try:
             path, line_no = line.split(":")
-            path = path.strip()
+            path = Path(path.strip())
             line_no = int(line_no.strip("'"))
 
-            try:
-                with open(path, "r") as f:
-                    file_lines = f.readlines()
-                    if 0 <= line_no - 1 < len(file_lines):
-                        content = file_lines[line_no - 1].rstrip()
-                        language = get_language_from_path(path)
-                        enriched_locations.append(f"```{language}\n{content}\n```\n")
-            except (IOError, IndexError):
-                continue
+            contents = path.read_text()
+            file_lines = contents.splitlines()
+            if 0 <= line_no - 1 < len(file_lines):
+                content = file_lines[line_no - 1].rstrip()
+                language = get_language_from_path(path)
+                enriched_locations.append(f"```{language}\n{content}\n```\n")
 
-        except (ValueError, IndexError):
+        # TODO: better handling here
+        except Exception:
             continue
 
     return (
