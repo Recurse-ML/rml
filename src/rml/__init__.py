@@ -1,3 +1,4 @@
+import sys
 import click
 import pydantic
 
@@ -196,18 +197,15 @@ def analyze(target_filenames: list[str]) -> None:
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 def main(target_filenames: list[str]) -> int:
-    ret_code = 0
-
     try:
         analyze(target_filenames)
     except Exception as e:
         logger.exception(
-            f"\nAn error occured: {e}\nPlease report this to abc@discord.com"
+            f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
-        ret_code = 1
+        sys.exit(1)
     finally:
         client.close()
-    return ret_code
 
 
 if __name__ == "__main__":
