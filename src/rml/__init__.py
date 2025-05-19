@@ -201,7 +201,7 @@ def analyze(target_filenames: list[str]) -> None:
 def create_mock_breaking_change_comments() -> list[Comment]:
     bc_1 = Comment(
         relative_path="src/squash/comment_classifier.py",
-        line_no=10,
+        line_no=92,
         body=dedent("""
         This change breaks 1 usages of `classify_comment` across 1 files
         ## Symbol: `classify_comment`
