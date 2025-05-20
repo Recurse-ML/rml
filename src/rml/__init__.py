@@ -89,7 +89,7 @@ def get_files_to_zip(
     target_filenames: list[str],
     tempdir: Path,
     base_commit: str,
-    head_commit: str,
+    head_commit: Optional[str],
     **kwargs,
 ) -> dict[str, Any]:
     raise_if_not_in_git_repo()
@@ -124,7 +124,7 @@ def get_files_to_zip(
         # Export files at head commit or working directory
         for filename in all_filenames:
             try:
-                if head_commit == "HEAD":
+                if head_commit is None:
                     dst_path = head_dir / filename
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
                     source_path = git_root / filename
@@ -234,10 +234,10 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     head_commit = head  # current index state
 
     workflow_steps = [
-        Step(name="Analyze git repo", func=get_files_to_zip),
+        Step(name="Analyzing git repo", func=get_files_to_zip),
         Step(name="Tarballing repo files", func=make_tar),
         Step(name="Sending tarball to server", func=post_check),
-        Step(name="Collecting analysis results", func=check_analysis_results),
+        Step(name="Waiting for analysis results", func=check_analysis_results),
     ]
     with TemporaryDirectory() as tempdir:
         logger.debug(f"Using temporary directory: {tempdir}")
@@ -271,7 +271,11 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option("--base", default="HEAD", help="Base commit to compare against")
-@click.option("--head", default=None, help="Head commit to analyze. If None analyzes uncommited changes.")
+@click.option(
+    "--head",
+    default=None,
+    help="Head commit to analyze. If None analyzes uncommited changes.",
+)
 def main(target_filenames: list[str], base: str, head: str) -> None:
     try:
         analyze(target_filenames, base=base, head=head)
