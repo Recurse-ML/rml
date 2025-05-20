@@ -41,7 +41,6 @@ class Comment(BaseModel):
     relative_path: str
     line_no: int
     body: str
-    head_source: str
     diff_line: Optional[DiffLine] = None
     classification: Optional[CommentClassification] = None
     documentation_url: Optional[str] = None
