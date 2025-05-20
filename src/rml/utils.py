@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 import time
 from rml.datatypes import DiffLine, Operator, Diff
@@ -129,7 +130,7 @@ def wait(secs):
     return decorator
 
 
-def get_language_from_path(file_path: str) -> str:
+def get_language_from_path(file_path: Path) -> str:
     """
     Maps a file path to its corresponding language identifier for syntax highlighting.
 
