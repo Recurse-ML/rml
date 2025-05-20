@@ -135,22 +135,27 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_affected_locations(comment_body: str) -> str:
+def enrich_bc_markdown_with_source(comment: Comment) -> str:
     """
-    Enriches the affected locations section in the markdown content by adding the actual
-    file content for each referenced location.
-
-    Args:
-        markdown_content: The markdown content to enrich
-
-    Returns:
-        The enriched markdown content with file contents added after each location
+    Enriches a breaking change Comment markdown by adding the actual
+    file content for the breaking change line and the affected locations.
     """
+    assert (
+        comment.body.strip().startswith("This change breaks")
+        and "## Symbol" in comment.body
+    ), "Comment is not a breaking change comment"
+
+    enriched_body = ""
+
+    bc_line_content = (
+        Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
+    )
+    bc_language = get_language_from_path(Path(comment.relative_path))
+    enriched_body += f"```{bc_language}\n{bc_line_content}\n```\n"
+
     affected_section_marker = "## Affected locations"
-    if affected_section_marker not in comment_body:
-        return comment_body
-
-    bug_desc, affected_locations_section = comment_body.split(affected_section_marker)
+    bug_desc, affected_locations_section = comment.body.split(affected_section_marker)
+    enriched_body += bug_desc + affected_section_marker + "\n\n"
 
     filepath_line_pattern = re.compile(
         r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)"
@@ -181,7 +186,9 @@ def enrich_affected_locations(comment_body: str) -> str:
         language = get_language_from_path(filepath)
         enriched_locations.append(f"```{language}\n{target_line_content}\n```\n")
 
-    return bug_desc + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
+    enriched_body += "\n".join(enriched_locations)
+
+    return enriched_body
 
 
 def render_comment(
@@ -203,16 +210,7 @@ def render_comment(
         comment.body.strip().startswith("This change breaks")
         and "## Symbol" in comment.body
     ):
-        bc_line_content = (
-            Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
-        )
-        bc_line_language = get_language_from_path(Path(comment.relative_path))
-
-        markdown_content = (
-            f"```{bc_line_language}\n{bc_line_content}\n```\n"
-            + enrich_affected_locations(comment.body)
-        )
-
+        markdown_content = enrich_bc_markdown_with_source(comment)
         comment_panel = Panel(
             Markdown(markdown_content),
             title=f"{comment.relative_path}:{comment.line_no}",
