@@ -115,9 +115,9 @@ def get_files_to_zip(
         for filename in all_filenames:
             try:
                 file_content = local["git"]["show", f"{base_commit}:{filename}"]()
-                file_path = base_dir / filename
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                file_path.write_text(file_content)
+                dst_path = base_dir / filename
+                dst_path.parent.mkdir(parents=True, exist_ok=True)
+                dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {base_commit=}")
 
@@ -125,18 +125,18 @@ def get_files_to_zip(
         for filename in all_filenames:
             try:
                 if head_commit == "HEAD":
-                    file_path = head_dir / filename
-                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                    dst_path = head_dir / filename
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
                     source_path = git_root / filename
                     if source_path.exists():
-                        file_path.write_text(source_path.read_text())
+                        dst_path.write_text(source_path.read_text())
                     else:
                         logger.debug(f"File {filename} not found in working directory")
                 else:
                     file_content = local["git"]["show", f"{head_commit}:{filename}"]()
-                    file_path = head_dir / filename
-                    file_path.parent.mkdir(parents=True, exist_ok=True)
-                    file_path.write_text(file_content)
+                    dst_path = head_dir / filename
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
+                    dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {head_commit=}")
 
