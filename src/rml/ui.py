@@ -135,7 +135,7 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_affected_locations(markdown_content: str) -> str:
+def enrich_affected_locations(comment_body: str) -> str:
     """
     Enriches the affected locations section in the markdown content by adding the actual
     file content for each referenced location.
@@ -147,14 +147,14 @@ def enrich_affected_locations(markdown_content: str) -> str:
         The enriched markdown content with file contents added after each location
     """
     affected_section_marker = "## Affected locations"
-    if affected_section_marker not in markdown_content:
-        return markdown_content
+    if affected_section_marker not in comment_body:
+        return comment_body
 
-    bug_desc, affected_locations_section = markdown_content.split(
-        affected_section_marker
+    bug_desc, affected_locations_section = comment_body.split(affected_section_marker)
+
+    filepath_line_pattern = re.compile(
+        r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)"
     )
-
-    filepath_line_pattern = re.compile(r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)")
     affected_locations_lines = affected_locations_section.splitlines()
     affected_locations_lines = list(
         filter(filepath_line_pattern.match, affected_locations_lines)
@@ -165,22 +165,21 @@ def enrich_affected_locations(markdown_content: str) -> str:
     for affected_location_line in affected_locations_lines:
         enriched_locations.append(affected_location_line)
 
-        try:
-            match = filepath_line_pattern.match(affected_location_line)
-            assert match is not None, f"Failed to match filepath and line number for {affected_location_line}"
-            filepath = Path(match.group('filepath'))
-            line_no = int(match.group('line_no'))
+        match = filepath_line_pattern.match(affected_location_line)
+        assert match is not None, (
+            f"Failed to match filepath and line number for {affected_location_line}"
+        )
+        filepath = Path(match.group("filepath"))
+        line_no = int(match.group("line_no"))
 
-            file_src_lines = filepath.read_text().splitlines()
-            assert line_no - 1 < len(file_src_lines), f"{line_no=} is out of bounds for {filepath=} ({len(file_src_lines)} lines)"
+        file_src_lines = filepath.read_text().splitlines()
+        assert line_no - 1 < len(file_src_lines), (
+            f"{line_no=} is out of bounds for {filepath=} ({len(file_src_lines)} lines)"
+        )
 
-            target_line = file_src_lines[line_no - 1]
-            language = get_language_from_path(filepath)
-            enriched_locations.append(f"```{language}\n{target_line}\n```\n")
-
-        # TODO: better handling here
-        except Exception:
-            continue
+        target_line_content = file_src_lines[line_no - 1]
+        language = get_language_from_path(filepath)
+        enriched_locations.append(f"```{language}\n{target_line_content}\n```\n")
 
     return bug_desc + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
 
@@ -204,11 +203,15 @@ def render_comment(
         comment.body.strip().startswith("This change breaks")
         and "## Symbol" in comment.body
     ):
-        with open(comment.relative_path, "r") as f:
-            line_content = f.readlines()[comment.line_no - 1].rstrip()
+        bc_line_content = (
+            Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
+        )
+        bc_line_language = get_language_from_path(comment.relative_path)
 
-        markdown_content = line_content + "\n" + comment.body + "\n"
-        markdown_content = enrich_affected_locations(markdown_content)
+        markdown_content = (
+            f"```{bc_line_language}\n{bc_line_content}\n```\n"
+            + enrich_affected_locations(comment.body)
+        )
 
         comment_panel = Panel(
             Markdown(markdown_content),
