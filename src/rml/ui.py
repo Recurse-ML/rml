@@ -206,7 +206,7 @@ def render_comment(
         bc_line_content = (
             Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
         )
-        bc_line_language = get_language_from_path(comment.relative_path)
+        bc_line_language = get_language_from_path(Path(comment.relative_path))
 
         markdown_content = (
             f"```{bc_line_language}\n{bc_line_content}\n```\n"
