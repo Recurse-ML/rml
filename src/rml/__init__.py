@@ -78,7 +78,6 @@ def get_files_to_zip(
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
 
-    # Create base and head directories
     base_dir = tempdir / "base"
     head_dir = tempdir / "head"
     base_dir.mkdir(exist_ok=True)
@@ -98,7 +97,6 @@ def get_files_to_zip(
         # Export files at base commit
         for filename in all_filenames:
             try:
-                # TODO: what does git show look like in failure cases?
                 file_content = local["git"]["show", f"{base_commit}:{filename}"]()
                 file_path = base_dir / filename
                 file_path.parent.mkdir(parents=True, exist_ok=True)
