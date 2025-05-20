@@ -122,6 +122,8 @@ def get_files_to_zip(
                 dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {base_commit=}")
+            except UnicodeDecodeError:
+                logger.debug(f"File {filename} is not a text file")
 
         # Export files at head commit or working directory
         for filename in all_filenames:
@@ -141,6 +143,8 @@ def get_files_to_zip(
                     dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {head_commit=}")
+            except UnicodeDecodeError:
+                logger.info(f"File {filename} is not a text file")
 
     return dict(
         git_root=git_root,
