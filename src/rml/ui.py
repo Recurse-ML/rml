@@ -173,6 +173,7 @@ def enrich_affected_locations(markdown_content: str) -> str:
 
             file_src_lines = filepath.read_text().splitlines()
             assert line_no - 1 < len(file_src_lines), f"{line_no=} is out of bounds for {filepath=} ({len(file_src_lines)} lines)"
+
             target_line = file_src_lines[line_no - 1]
             language = get_language_from_path(filepath)
             enriched_locations.append(f"```{language}\n{target_line}\n```\n")
