@@ -270,13 +270,12 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
 
 @click.command()
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
-@click.option("--base", default="HEAD~1", help="Base commit to compare against")
-@click.option("--head", default="HEAD", help="Head commit to analyze")
-def main(target_filenames: list[str], base: str, head: str) -> int:
-    ret_code = 0
-
+@click.option("--base", default="HEAD", help="Base commit to compare against")
+@click.option("--head", default=None, help="Head commit to analyze. If None analyzes uncommited changes.")
+def main(target_filenames: list[str], base: str, head: str) -> None:
     try:
         analyze(target_filenames, base=base, head=head)
+        sys.exit(0)
     except Exception as e:
         logger.exception(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
