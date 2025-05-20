@@ -175,7 +175,5 @@ def get_language_from_path(file_path: str) -> str:
         ".cs": "csharp",
     }
 
-    import os
-
-    _, ext = os.path.splitext(file_path.lower())
+    ext = file_path.suffix
     return extension_map.get(ext, "text")
