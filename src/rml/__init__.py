@@ -1,3 +1,4 @@
+import sys
 import click
 import pydantic
 
@@ -13,7 +14,7 @@ from rich.text import Text
 from rich.console import Console
 from rich.logging import RichHandler
 
-from rml.datatypes import Comment
+from rml.datatypes import Comment, DiffLine, Operator
 from rml.package_config import HOST
 from rml.package_logger import logger
 from rml.ui import Workflow, Step, render_comments
@@ -263,12 +264,11 @@ def main(target_filenames: list[str], base: str, head: str) -> int:
         analyze(target_filenames, base=base, head=head)
     except Exception as e:
         logger.exception(
-            f"\nAn error occured: {e}\nPlease report this to abc@discord.com"
+            f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
-        ret_code = 1
+        sys.exit(1)
     finally:
         client.close()
-    return ret_code
 
 
 if __name__ == "__main__":
