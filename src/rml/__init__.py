@@ -144,7 +144,7 @@ def get_files_to_zip(
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {head_commit=}")
             except UnicodeDecodeError:
-                logger.info(f"File {filename} is not a text file")
+                logger.debug(f"File {filename} is not a text file")
 
     return dict(
         git_root=git_root,
