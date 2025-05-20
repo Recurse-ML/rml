@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import rich
 from logging import Logger
 from typing import Any, Callable
@@ -149,9 +150,16 @@ def enrich_affected_locations(markdown_content: str) -> str:
     if affected_section_marker not in markdown_content:
         return markdown_content
 
-    prev_context, affected_locations_section = markdown_content.split(
+    bug_desc, affected_locations_section = markdown_content.split(
         affected_section_marker
     )
+
+    filepath_pattern = re.compile(r"^[a-zA-Z0-9_./-]+:\d+")
+    affected_locations_lines = affected_locations_section.splitlines()
+    affected_locations_lines = list(
+        filter(filepath_pattern.match, affected_locations_lines)
+    )
+
     enriched_locations = []
 
     for line in affected_locations_section.strip().split("\n"):
@@ -177,9 +185,7 @@ def enrich_affected_locations(markdown_content: str) -> str:
         except Exception:
             continue
 
-    return (
-        prev_context + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
-    )
+    return bug_desc + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
 
 
 def render_comment(
