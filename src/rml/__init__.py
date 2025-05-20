@@ -68,6 +68,23 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         raise e
 
 
+def raise_if_files_not_relative_to_git_root(
+    filenames: list[str], git_root: Path
+) -> None:
+    """
+    Validate that all files are within the git repository.
+    Raises ValueError if any file attempts to escape the repository root.
+    """
+    for filename in filenames:
+        try:
+            full_path = (git_root / filename).resolve()
+            full_path.relative_to(git_root)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid path {filename} - attempting to access file outside repository"
+            ) from e
+
+
 def get_files_to_zip(
     target_filenames: list[str],
     tempdir: Path,
@@ -77,6 +94,7 @@ def get_files_to_zip(
 ) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
+    raise_if_files_not_relative_to_git_root(target_filenames, git_root)
 
     base_dir = tempdir / "base"
     head_dir = tempdir / "head"
