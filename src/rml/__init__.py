@@ -84,7 +84,6 @@ def get_files_to_zip(
     head_dir.mkdir(exist_ok=True)
 
     with local.cwd(git_root):
-        # Get list of tracked files
         tracked_filenames = local["git"]["ls-files"]().splitlines()
         deleted_filenames = local["git"]["ls-files", "-d"]().splitlines()
         tracked_filenames = list(set(tracked_filenames) - set(deleted_filenames))
