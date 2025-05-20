@@ -1,5 +1,7 @@
 import sys
 import click
+import httpcore
+import httpx
 import pydantic
 
 from typing import Any, Optional
@@ -151,9 +153,9 @@ def analyze(target_filenames: list[str]) -> None:
     """Checks for bugs in target_filenames."""
     console = Console()
     handler = RichHandler(
-        rich_tracebacks=True,
         console=console,
         show_time=False,
+        tracebacks_suppress=[click, httpx, httpcore, pydantic],
     )
     logger.addHandler(handler)
 
@@ -202,8 +204,8 @@ def main(target_filenames: list[str]) -> int:
     try:
         analyze(target_filenames)
     except Exception as e:
-        logger.exception(
-            f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+        logger.error(
+            f"Error: {str(e)}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
     finally:
