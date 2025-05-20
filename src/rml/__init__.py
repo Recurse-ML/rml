@@ -240,8 +240,8 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     head_commit = head  # current index state
 
     workflow_steps = [
-        Step(name="Analyzing git repo", func=get_files_to_zip),
-        Step(name="Tarballing repo files", func=make_tar),
+        Step(name="Looking for local changes", func=get_files_to_zip),
+        Step(name="Tarballing files", func=make_tar),
         Step(name="Sending tarball to server", func=post_check),
         Step(name="Waiting for analysis results", func=check_analysis_results),
     ]
