@@ -154,32 +154,28 @@ def enrich_affected_locations(markdown_content: str) -> str:
         affected_section_marker
     )
 
-    filepath_pattern = re.compile(r"^[a-zA-Z0-9_./-]+:\d+")
+    filepath_line_pattern = re.compile(r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)")
     affected_locations_lines = affected_locations_section.splitlines()
     affected_locations_lines = list(
-        filter(filepath_pattern.match, affected_locations_lines)
+        filter(filepath_line_pattern.match, affected_locations_lines)
     )
 
     enriched_locations = []
 
-    for line in affected_locations_section.strip().split("\n"):
-        line = line.strip()
-        if len(line) == 0:
-            continue
-
-        enriched_locations.append(line)
+    for affected_location_line in affected_locations_lines:
+        enriched_locations.append(affected_location_line)
 
         try:
-            path, line_no = line.split(":")
-            path = Path(path.strip())
-            line_no = int(line_no.strip("'"))
+            match = filepath_line_pattern.match(affected_location_line)
+            assert match is not None, f"Failed to match filepath and line number for {affected_location_line}"
+            filepath = Path(match.group('filepath'))
+            line_no = int(match.group('line_no'))
 
-            contents = path.read_text()
-            file_lines = contents.splitlines()
-            if 0 <= line_no - 1 < len(file_lines):
-                content = file_lines[line_no - 1].rstrip()
-                language = get_language_from_path(path)
-                enriched_locations.append(f"```{language}\n{content}\n```\n")
+            file_src_lines = filepath.read_text().splitlines()
+            assert line_no - 1 < len(file_src_lines), f"{line_no=} is out of bounds for {filepath=} ({len(file_src_lines)} lines)"
+            target_line = file_src_lines[line_no - 1]
+            language = get_language_from_path(filepath)
+            enriched_locations.append(f"```{language}\n{target_line}\n```\n")
 
         # TODO: better handling here
         except Exception:
