@@ -135,10 +135,10 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_bc_markdown_with_source(comment: Comment) -> str:
+def enrich_bc_markdown_with_source(comment: APICommentResponse) -> str:
     """
-    Enriches a breaking change Comment markdown by adding the actual
-    file content for the breaking change line and the affected locations.
+    Enriches the reference locations of an APICommentResponse for breaking change
+    by reading the file content for both the breaking change line and the reference locations.
     """
     assert (
         comment.body.strip().startswith("This change breaks")
@@ -153,26 +153,26 @@ def enrich_bc_markdown_with_source(comment: Comment) -> str:
     bc_language = get_language_from_path(Path(comment.relative_path))
     enriched_body += f"```{bc_language}\n{bc_line_content}\n```\n"
 
-    affected_section_marker = "## Affected locations"
-    bug_desc, affected_locations_section = comment.body.split(affected_section_marker)
-    enriched_body += bug_desc + affected_section_marker + "\n\n"
+    reference_section_marker = "## reference locations"
+    bug_desc, reference_locations_section = comment.body.split(reference_section_marker)
+    enriched_body += bug_desc + reference_section_marker + "\n\n"
 
     filepath_line_pattern = re.compile(
         r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)"
     )
-    affected_locations_lines = affected_locations_section.splitlines()
-    affected_locations_lines = list(
-        filter(filepath_line_pattern.match, affected_locations_lines)
+    reference_locations_lines = reference_locations_section.splitlines()
+    reference_locations_lines = list(
+        filter(filepath_line_pattern.match, reference_locations_lines)
     )
 
     enriched_locations = []
 
-    for affected_location_line in affected_locations_lines:
-        enriched_locations.append(affected_location_line)
+    for reference_location_line in reference_locations_lines:
+        enriched_locations.append(reference_location_line)
 
-        match = filepath_line_pattern.match(affected_location_line)
+        match = filepath_line_pattern.match(reference_location_line)
         assert match is not None, (
-            f"Failed to match filepath and line number for {affected_location_line}"
+            f"Failed to match filepath and line number for {reference_location_line}"
         )
         filepath = Path(match.group("filepath"))
         line_no = int(match.group("line_no"))
@@ -206,78 +206,72 @@ def render_comment(
     """
     ui_elements = []
 
-    if (
-        comment.body.strip().startswith("This change breaks")
-        and "## Symbol" in comment.body
-    ):
+    if comment.reference_locations is not None:
         markdown_content = enrich_bc_markdown_with_source(comment)
-        comment_panel = Panel(
-            Markdown(markdown_content),
-            title=f"{comment.relative_path}:{comment.line_no}",
-            style=Style(bold=True, bgcolor="black"),
-        )
-        ui_elements.append(comment_panel)
+        comment_content = Markdown(markdown_content)
     else:
-        comment_panel = Panel(
-            comment.body,
-            title=f"{comment.relative_path}:{comment.line_no}",
-            style=Style(bold=True, bgcolor="black"),
+        comment_content = comment.body
+
+    comment_panel = Panel(
+        comment_content,
+        title=f"{comment.relative_path}:{comment.line_no}",
+        style=Style(bold=True, bgcolor="black"),
+    )
+    ui_elements.append(comment_panel)
+
+    # TODO: get git diff from API.
+    git_diff = local["git"]["diff", comment.relative_path]()
+    parsed_output = parse_diff_str_multi_hunk(git_diff)
+    diffs_with_comment = []
+
+    for diff in parsed_output:
+        diff_new_start_line_no = diff.new_start_line_idx + 1
+        diff_new_end_line_no = diff_new_start_line_no + diff.new_len
+        if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
+            diffs_with_comment.append(diff)
+
+    if len(diffs_with_comment) == 0:
+        logger.warning(
+            f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
         )
-        ui_elements.append(comment_panel)
+    else:
+        assert len(diffs_with_comment) == 1, (
+            "Found multiple diffs containing the same lines, this should not happen"
+        )
 
-        # TODO: get git diff from API.
-        git_diff = local["git"]["diff", comment.relative_path]()
-        parsed_output = parse_diff_str_multi_hunk(git_diff)
-        diffs_with_comment = []
+        diff = diffs_with_comment[0]
+        diff_header = make_diff_header(diff)
+        diff_str_lines_before_comment = []
+        diff_str_lines_after_comment = []
 
-        for diff in parsed_output:
-            diff_new_start_line_no = diff.new_start_line_idx + 1
-            diff_new_end_line_no = diff_new_start_line_no + diff.new_len
-            if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
-                diffs_with_comment.append(diff)
+        curr_old_line = diff.old_start_line_idx + 1
+        curr_new_line = diff.new_start_line_idx + 1
 
-        if len(diffs_with_comment) == 0:
-            logger.warning(
-                f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
-            )
-        else:
-            assert len(diffs_with_comment) == 1, (
-                "Found multiple diffs containing the same lines, this should not happen"
-            )
-
-            diff = diffs_with_comment[0]
-            diff_header = make_diff_header(diff)
-            diff_str_lines_before_comment = []
-            diff_str_lines_after_comment = []
-
-            curr_old_line = diff.old_start_line_idx + 1
-            curr_new_line = diff.new_start_line_idx + 1
-
-            for change in diff.changes:
-                if curr_new_line <= comment.line_no:
-                    diff_str_lines_before_comment.append(
-                        f"{change.operator.value}{change.content}"
-                    )
-                else:
-                    diff_str_lines_after_comment.append(
-                        f"{change.operator.value}{change.content}"
-                    )
-
-                if change.old_line_idx is not None:
-                    curr_old_line += 1
-                if change.new_line_idx is not None:
-                    curr_new_line += 1
-
-            pre_comment_syntax = make_comment_syntax(
-                lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
-            )
-            ui_elements.insert(0, pre_comment_syntax)
-
-            if diff_str_lines_after_comment:
-                post_comment_syntax = make_comment_syntax(
-                    lines=diff_str_lines_after_comment[:context_window],
+        for change in diff.changes:
+            if curr_new_line <= comment.line_no:
+                diff_str_lines_before_comment.append(
+                    f"{change.operator.value}{change.content}"
                 )
-                ui_elements.append(post_comment_syntax)
+            else:
+                diff_str_lines_after_comment.append(
+                    f"{change.operator.value}{change.content}"
+                )
+
+            if change.old_line_idx is not None:
+                curr_old_line += 1
+            if change.new_line_idx is not None:
+                curr_new_line += 1
+
+        pre_comment_syntax = make_comment_syntax(
+            lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
+        )
+        ui_elements.insert(0, pre_comment_syntax)
+
+        if diff_str_lines_after_comment:
+            post_comment_syntax = make_comment_syntax(
+                lines=diff_str_lines_after_comment[:context_window],
+            )
+            ui_elements.append(post_comment_syntax)
 
     if comment.documentation_url is not None:
         ui_elements.append(Text(f"More info: {comment.documentation_url}\n"))
