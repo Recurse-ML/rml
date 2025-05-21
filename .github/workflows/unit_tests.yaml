@@ -37,6 +37,7 @@ jobs:
         run: make install-test
 
       - name: Set up path
+        run: |
           . $VIRTUAL_ENV/bin/activate
           echo PATH=$PATH >> $GITHUB_ENV
 
