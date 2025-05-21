@@ -53,12 +53,6 @@ fi
 echo "Extracting rml.tar.gz to $INSTALL_DIR/rml"
 if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$INSTALL_DIR"; then
     echo "Error: Extraction failed"
-    # Restore backup on failure
-    if [ -d "$BACKUP_DIR/rml" ]; then
-        echo "Restoring backup..."
-        rm -rf "$INSTALL_DIR/rml"
-        mv "$BACKUP_DIR/rml" "$INSTALL_DIR/rml"
-    fi
     exit 1
 fi
 
