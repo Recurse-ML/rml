@@ -206,6 +206,7 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]
             f"Failed to read breaking change line at {comment.relative_path}:{comment.line_no}",
             exc_info=True,
         )
+        return None
     except IndexError:
         logger.warning(
             f"Breaking change line at {comment.relative_path}:{comment.line_no} is out of bounds",
