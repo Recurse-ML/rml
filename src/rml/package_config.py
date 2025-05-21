@@ -11,7 +11,8 @@ LOG_DIR = PROJECT_ROOT / "logs"
 VERSION_CHECK_URL = (
     "https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
 )
-VERSION_FILE_PATH = Path("/usr/local/share/rml/version.txt")
+XDG_DATA_HOME = os.getenv("XDG_DATA_HOME", str(Path.home() / ".local/share"))
+VERSION_FILE_PATH = Path(XDG_DATA_HOME) / "rml/version.txt"
 
 if os.getenv("U_HOST") is not None:
     HOST = os.getenv("U_HOST")

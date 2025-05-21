@@ -7,8 +7,13 @@ trap 'echo "Error on line $LINENO"' ERR
 # Configuration
 VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
 ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/rml.tar.gz"
-INSTALL_DIR="/usr/local/share"
-BIN_DIR="/usr/local/bin"
+
+# Default installation directories following XDG Base Directory Specification
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+XDG_BIN_HOME="${HOME}/.local/bin"
+INSTALL_DIR="${XDG_DATA_HOME}/rml"
+BIN_DIR="${XDG_BIN_HOME}"
+
 TEMP_DIR="$(mktemp -d)"
 BACKUP_DIR="$(mktemp -d)"
 
@@ -17,11 +22,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Check if running with necessary privileges
-if [ ! -w "$INSTALL_DIR" ] || [ ! -w "$BIN_DIR" ]; then
-    echo "Error: Installation requires write access to $INSTALL_DIR and $BIN_DIR"
-    exit 1
-fi
+# Create directories if they don't exist
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$BIN_DIR"
 
 # Check Dependencies
 declare -a DEPS=("git" "tar" "curl")
