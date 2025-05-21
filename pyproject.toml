@@ -17,6 +17,27 @@ dependencies = [
     "rich",
 ]
 
+[project.optional-dependencies]
+
+test = [
+  "ruff >= 0.9",
+]
+
+
+[tool.ruff]
+include = ["src/**/*.py", "cli/**/*.py", "containers/**/*.py", "tests/**/*.py", "notebooks/**/*.py"]
+
+[tool.ruff.lint]
+select = ["F", # Pyflakes
+          "I", # isort
+          "E"] # pycodestyle
+ignore = ["E501", # line-too-long, conflicting with formatter
+          "E731"] # assigning lambda's to variables is a honking good idea
+
+[tool.ruff.lint.isort]
+known-local-folder = ["src", "rml"] # Necessary to separate imports for local package
+
+
 [project.scripts]
 rml = "rml:main"
 

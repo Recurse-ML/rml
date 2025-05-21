@@ -1,7 +1,8 @@
-from typing import Optional, NamedTuple
 from enum import Enum
+from typing import NamedTuple, Optional
 
 from pydantic import BaseModel
+
 
 class APICommentResponse(BaseModel):
     body: str
@@ -12,6 +13,7 @@ class APICommentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class Operator(Enum):
     ADD = "+"

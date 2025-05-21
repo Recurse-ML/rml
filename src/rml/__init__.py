@@ -1,23 +1,22 @@
 import sys
-import click
-import pydantic
-
-from typing import Any, Optional
-from datetime import datetime
 import time
-from httpx import Client, HTTPStatusError, RequestError
-from plumbum import ProcessExecutionError, local
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any, Optional
 
-from rich.text import Text
+import click
+import pydantic
+from httpx import Client, HTTPStatusError, RequestError
+from plumbum import ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.text import Text
 
-from rml.datatypes import Comment, DiffLine, Operator
+from rml.datatypes import Comment
 from rml.package_config import HOST
 from rml.package_logger import logger
-from rml.ui import Workflow, Step, render_comments
+from rml.ui import Step, Workflow, render_comments
 
 client = Client(base_url=HOST)
 
