@@ -20,12 +20,13 @@ dependencies = [
 [project.optional-dependencies]
 
 test = [
+  "pytest >= 8.0",
   "ruff >= 0.9",
 ]
 
 
 [tool.ruff]
-include = ["src/**/*.py", "cli/**/*.py", "containers/**/*.py", "tests/**/*.py", "notebooks/**/*.py"]
+include = ["src/**/*.py", "cli/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
 select = ["F", # Pyflakes
