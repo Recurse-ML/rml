@@ -5,8 +5,8 @@ set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
 # Configuration
-VERSION_URL="https://storage.googleapis.com/squash-public/version.txt"
-ARCHIVE_URL="https://storage.googleapis.com/squash-public/rml.tar.gz"
+VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
+ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/rml.tar.gz"
 INSTALL_DIR="/usr/local/share"
 BIN_DIR="/usr/local/bin"
 TEMP_DIR="$(mktemp -d)"
