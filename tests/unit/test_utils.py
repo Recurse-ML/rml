@@ -7,21 +7,21 @@ import pytest
 
 
 @pytest.fixture(scope="function")
-def file_1(tmpdir):
-    file = tmpdir.join("test_1.py")
-    file.write("def test_1(): pass")
-    return file
+def filepath_1(tmp_path):
+    file_path = tmp_path / "test_1.py"
+    file_path.write_text("def test_1(): pass")
+    return file_path
 
 
 @pytest.fixture(scope="function")
-def file_2(tmpdir):
-    file = tmpdir.join("test_2.py")
-    file.write("def test_2(): pass")
-    return file
+def filepath_2(tmp_path):
+    file_path = tmp_path / "test_2.py"
+    file_path.write_text("def test_2(): pass")
+    return file_path
 
 
 def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
-    file_1, file_2
+    filepath_1, filepath_2
 ):
     comment_body = dedent(f"""
     This change breaks 1 usages of `test_1` across 1 files
@@ -30,15 +30,15 @@ def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
     
     ## Affected locations
 
-    {file_2.strpath}:1
+    {filepath_2.name}:1
     """)
     comment = APICommentResponse(
         body=comment_body,
         diff_str="",
-        relative_path=file_1.strpath,
+        relative_path=str(filepath_1),
         line_no=1,
         reference_locations=[
-            SourceLocation(relative_path=file_2.strpath, line_no=1),
+            SourceLocation(relative_path=str(filepath_2), line_no=1),
         ],
     )
 
@@ -57,7 +57,7 @@ def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
     
     ## Affected locations
 
-    {file_2.strpath}:1
+    {str(filepath_2)}:1
     ```python
     def test_2(): pass
     ```
@@ -66,7 +66,7 @@ def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
 
 
 def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_reading_bc_line(
-    file_1, file_2
+    filepath_1, filepath_2
 ):
     comment_body = dedent(f"""
     This change breaks 1 usages of `test_1` across 1 files
@@ -75,19 +75,49 @@ def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_readi
     
     ## Affected locations
 
-    {file_2.strpath}:1
+    {str(filepath_2)}:1
     """)
     comment = APICommentResponse(
         body=comment_body,
         diff_str="",
-        relative_path=file_1.strpath,
+        relative_path=str(filepath_1),
         line_no=1,
         reference_locations=[
-            SourceLocation(relative_path=file_2.strpath, line_no=1),
+            SourceLocation(relative_path=str(filepath_2), line_no=1),
         ],
     )
 
-    with patch("rml.utils.Path.read_text", side_effect=FileNotFoundError()):
-        enriched_body = enrich_bc_markdown_with_source(comment)
+    filepath_1.unlink()  # Will cause a FileNotFoundError
+
+    enriched_body = enrich_bc_markdown_with_source(comment)
+
+    assert enriched_body is None
+
+
+def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_reading_all_ref_location_lines(
+    filepath_1, filepath_2
+):
+    comment_body = dedent(f"""
+    This change breaks 1 usages of `test_1` across 1 files
+
+    #Symbol: `test_1`
+    
+    ## Affected locations
+
+    {filepath_2.name}:1
+    """)
+    comment = APICommentResponse(
+        body=comment_body,
+        diff_str="",
+        relative_path=filepath_1.name,
+        line_no=1,
+        reference_locations=[
+            SourceLocation(relative_path=filepath_2.name, line_no=1),
+        ],
+    )
+
+    filepath_2.unlink()  # Will cause a FileNotFoundError
+
+    enriched_body = enrich_bc_markdown_with_source(comment)
 
     assert enriched_body is None
