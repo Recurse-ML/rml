@@ -20,6 +20,7 @@ from enum import Enum
 from plumbum import local
 
 from rml.datatypes import APICommentResponse
+from rml.package_logger import logger
 
 from rml.utils import (
     parse_diff_str_multi_hunk,
@@ -140,53 +141,29 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> str:
     Enriches the reference locations of an APICommentResponse for breaking change
     by reading the file content for both the breaking change line and the reference locations.
     """
-    assert (
-        comment.body.strip().startswith("This change breaks")
-        and "## Symbol" in comment.body
-    ), "Comment is not a breaking change comment"
-
     enriched_body = ""
 
-    bc_line_content = (
+    bc_line_src = (
         Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
     )
     bc_language = get_language_from_path(Path(comment.relative_path))
-    enriched_body += f"```{bc_language}\n{bc_line_content}\n```\n"
+    enriched_body += f"```{bc_language}\n{bc_line_src}\n```\n"
 
-    reference_section_marker = "## reference locations"
-    bug_desc, reference_locations_section = comment.body.split(reference_section_marker)
+    reference_section_marker = "## Affected locations"
+    bug_desc, _ = comment.body.split(reference_section_marker)
     enriched_body += bug_desc + reference_section_marker + "\n\n"
 
-    filepath_line_pattern = re.compile(
-        r"^(?P<filepath>[a-zA-Z0-9_./-]+):(?P<line_no>\d+)"
-    )
-    reference_locations_lines = reference_locations_section.splitlines()
-    reference_locations_lines = list(
-        filter(filepath_line_pattern.match, reference_locations_lines)
-    )
-
-    enriched_locations = []
-
-    for reference_location_line in reference_locations_lines:
-        enriched_locations.append(reference_location_line)
-
-        match = filepath_line_pattern.match(reference_location_line)
-        assert match is not None, (
-            f"Failed to match filepath and line number for {reference_location_line}"
-        )
-        filepath = Path(match.group("filepath"))
-        line_no = int(match.group("line_no"))
-
-        file_src_lines = filepath.read_text().splitlines()
-        assert line_no - 1 < len(file_src_lines), (
-            f"{line_no=} is out of bounds for {filepath=} ({len(file_src_lines)} lines)"
-        )
-
-        target_line_content = file_src_lines[line_no - 1]
-        language = get_language_from_path(filepath)
-        enriched_locations.append(f"```{language}\n{target_line_content}\n```\n")
-
-    enriched_body += "\n".join(enriched_locations)
+    for reference_location in comment.reference_locations:
+        src_lines = Path(reference_location.relative_path).read_text().splitlines()
+        if 1 <= reference_location.line_no <= len(src_lines):
+            target_line_content = src_lines[reference_location.line_no - 1]
+            language = get_language_from_path(Path(reference_location.relative_path))
+            enriched_body += str(reference_location) + "\n"
+            enriched_body += f"```{language}\n{target_line_content}\n```\n"
+        else:
+            logger.warning(
+                f"Line number {reference_location.line_no} is out of bounds for {reference_location.relative_path}"
+            )
 
     return enriched_body
 

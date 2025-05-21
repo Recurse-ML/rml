@@ -8,6 +8,9 @@ class SourceLocation(BaseModel):
     relative_path: str
     line_no: int
 
+    def __str__(self):
+        return f"{self.relative_path}:{self.line_no}"
+
 
 class APICommentResponse(BaseModel):
     body: str
