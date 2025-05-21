@@ -206,6 +206,11 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]
             f"Failed to read breaking change line at{comment.relative_path}:{comment.line_no}",
             exc_info=True,
         )
+    except IndexError:
+        logger.warning(
+            f"Breaking change line at {comment.relative_path}:{comment.line_no} is out of bounds",
+            exc_info=True,
+        )
         return None
 
     bc_language = get_language_from_path(Path(comment.relative_path))
@@ -219,26 +224,29 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]
 
     for ref_location in comment.reference_locations:
         try:
-            src_lines = Path(ref_location.relative_path).read_text().splitlines()
+            ref_location_line_src = (
+                Path(ref_location.relative_path)
+                .read_text()
+                .splitlines()[ref_location.line_no - 1]
+            )
         except (FileNotFoundError, PermissionError):
             logger.warning(
                 f"Failed to read reference location at {ref_location.relative_path}:{ref_location.line_no}",
                 exc_info=True,
             )
             continue
-
-        if 1 <= ref_location.line_no <= len(src_lines):
-            ref_location_line_src = src_lines[ref_location.line_no - 1]
-            language = get_language_from_path(Path(ref_location.relative_path))
-            enriched_reference_locations.append(
-                f"{ref_location.relative_path}:{ref_location.line_no}"
-                + "\n"
-                + f"```{language}\n{ref_location_line_src}\n```\n"
-            )
-        else:
+        except IndexError:
             logger.warning(
-                f"Line number {ref_location.line_no} is out of bounds for {ref_location.relative_path}"
+                f"Reference location at {ref_location.relative_path}:{ref_location.line_no} is out of bounds",
+                exc_info=True,
             )
+            continue
+
+        enriched_reference_locations.append(
+            f"{ref_location.relative_path}:{ref_location.line_no}"
+            + "\n"
+            + f"```{language}\n{ref_location_line_src}\n```\n"
+        )
 
     if len(enriched_reference_locations) == 0:
         return None
