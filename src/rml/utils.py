@@ -1,7 +1,9 @@
 from pathlib import Path
 import re
 import time
-from rml.datatypes import DiffLine, Operator, Diff
+from typing import Optional
+from rml.datatypes import APICommentResponse, DiffLine, Operator, Diff
+from rml.package_logger import logger
 
 DIFF_HEADER_PTRN = re.compile(
     r"@@\s-(?P<old_start>\d+)(?:,(?P<old_len>\d+))?\s+\+(?P<new_start>\d+)(?:,(?P<new_len>\d+))?\s@@"
@@ -178,3 +180,69 @@ def get_language_from_path(file_path: Path) -> str:
 
     ext = file_path.suffix
     return extension_map.get(ext, "text")
+
+
+def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]:
+    """
+    Enriches the reference locations of an APICommentResponse for breaking change
+    by reading the file content for both the breaking change line and the reference locations.
+
+    Args:
+        comment: The APICommentResponse to enrich.
+
+    Returns:
+        The enriched markdown string. Returns None if
+        - Error occurs while reading the breaking change line.
+        - Errors occurs while reading all of the reference locations.
+    """
+    enriched_body = ""
+
+    try:
+        bc_line_src = (
+            Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
+        )
+    except (FileNotFoundError, PermissionError):
+        logger.warning(
+            f"Failed to read breaking change line at{comment.relative_path}:{comment.line_no}",
+            exc_info=True,
+        )
+        return None
+
+    bc_language = get_language_from_path(Path(comment.relative_path))
+    enriched_body += f"```{bc_language}\n{bc_line_src}\n```\n"
+
+    reference_section_marker = "## Affected locations"
+    bug_desc, _ = comment.body.split(reference_section_marker)
+    enriched_body += bug_desc + reference_section_marker + "\n\n"
+
+    enriched_reference_locations = []
+
+    for ref_location in comment.reference_locations:
+        try:
+            src_lines = Path(ref_location.relative_path).read_text().splitlines()
+        except (FileNotFoundError, PermissionError):
+            logger.warning(
+                f"Failed to read reference location at {ref_location.relative_path}:{ref_location.line_no}",
+                exc_info=True,
+            )
+            continue
+
+        if 1 <= ref_location.line_no <= len(src_lines):
+            ref_location_line_src = src_lines[ref_location.line_no - 1]
+            language = get_language_from_path(Path(ref_location.relative_path))
+            enriched_reference_locations.append(
+                f"{ref_location.relative_path}:{ref_location.line_no}"
+                + "\n"
+                + f"```{language}\n{ref_location_line_src}\n```\n"
+            )
+        else:
+            logger.warning(
+                f"Line number {ref_location.line_no} is out of bounds for {ref_location.relative_path}"
+            )
+
+    if len(enriched_reference_locations) == 0:
+        return None
+    else:
+        enriched_body += "\n".join(enriched_reference_locations)
+
+    return enriched_body
