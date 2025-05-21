@@ -1,6 +1,6 @@
 lint-check:
-	ruff check --no-fix
-	ruff format --check
+	.venv/bin/ruff check --no-fix
+	.venv/bin/ruff format --check
 
 lint:
 	# TODO: change CI to use env/bin
