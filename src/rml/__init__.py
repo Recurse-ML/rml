@@ -1,7 +1,5 @@
 import sys
 import click
-import httpcore
-import httpx
 import pydantic
 
 from typing import Any, Optional
@@ -226,7 +224,6 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     handler = RichHandler(
         console=console,
         show_time=False,
-        tracebacks_suppress=[click, httpx, httpcore, pydantic],
     )
     logger.addHandler(handler)
 
