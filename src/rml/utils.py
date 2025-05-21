@@ -182,40 +182,19 @@ def get_language_from_path(file_path: Path) -> str:
     return extension_map.get(ext, "text")
 
 
-def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]:
+def enrich_bc_ref_locations_with_source(comment: APICommentResponse) -> Optional[str]:
     """
     Enriches the reference locations of an APICommentResponse for breaking change
-    by reading the file content for both the breaking change line and the reference locations.
+    by reading the file content for each reference location.
 
     Args:
         comment: The APICommentResponse to enrich.
 
     Returns:
-        The enriched markdown string. Returns None if
-        - Error occurs while reading the breaking change line.
-        - Errors occurs while reading all of the reference locations.
+        The enriched markdown string with reference locations. Returns None if
+        errors occur while reading all of the reference locations.
     """
     enriched_body = ""
-
-    try:
-        bc_line_src = (
-            Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
-        )
-    except (FileNotFoundError, PermissionError):
-        logger.warning(
-            f"Failed to read breaking change line at {comment.relative_path}:{comment.line_no}",
-            exc_info=True,
-        )
-        return None
-    except IndexError:
-        logger.warning(
-            f"Breaking change line at {comment.relative_path}:{comment.line_no} is out of bounds",
-            exc_info=True,
-        )
-        return None
-
-    bc_language = get_language_from_path(Path(comment.relative_path))
-    enriched_body += f"```{bc_language}\n{bc_line_src}\n```\n"
 
     reference_section_marker = "## Affected locations"
     bug_desc, _ = comment.body.split(reference_section_marker)
