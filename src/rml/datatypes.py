@@ -3,6 +3,15 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+class APICommentResponse(BaseModel):
+    body: str
+    diff_str: str
+    relative_path: str
+    line_no: int
+    documentation_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 class Operator(Enum):
     ADD = "+"
