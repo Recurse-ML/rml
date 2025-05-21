@@ -285,7 +285,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         sys.exit(0)
     except Exception as e:
         logger.error(
-            f"Error: {str(e)}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
     finally:
