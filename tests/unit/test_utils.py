@@ -1,7 +1,7 @@
 from pathlib import Path
 from textwrap import dedent
 from rml.datatypes import APICommentResponse, SourceLocation
-from rml.utils import enrich_bc_markdown_with_source
+from rml.utils import enrich_bc_ref_locations_with_source
 from unittest.mock import patch
 import pytest
 
@@ -27,7 +27,7 @@ def filepath_3(tmp_path):
     return file_path
 
 
-def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
+def test_enrich_bc_ref_locations_with_source_adds_source_for_ref_locations(
     filepath_1, filepath_2
 ):
     comment_body = dedent(f"""
@@ -49,15 +49,11 @@ def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
         ],
     )
 
-    enriched_body = enrich_bc_markdown_with_source(comment)
+    enriched_body = enrich_bc_ref_locations_with_source(comment)
 
-    assert (
-        enriched_body
-        == dedent(f"""
-    ```python
-    def test_1(): pass
-    ```
-
+    expected = (
+        "\n"
+        + dedent(f"""
     This change breaks 1 usages of `test_1` across 1 files
 
     #Symbol: `test_1`
@@ -71,37 +67,10 @@ def test_enrich_bc_markdown_with_source_adds_source_for_bc_and_ref_locations(
     """).lstrip()
     )
 
-
-def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_reading_bc_line(
-    filepath_1, filepath_2
-):
-    comment_body = dedent(f"""
-    This change breaks 1 usages of `test_1` across 1 files
-
-    #Symbol: `test_1`
-    
-    ## Affected locations
-
-    {str(filepath_2)}:1
-    """)
-    comment = APICommentResponse(
-        body=comment_body,
-        diff_str="",
-        relative_path=str(filepath_1),
-        line_no=1,
-        reference_locations=[
-            SourceLocation(relative_path=str(filepath_2), line_no=1),
-        ],
-    )
-
-    filepath_1.unlink()  # Will cause a FileNotFoundError
-
-    enriched_body = enrich_bc_markdown_with_source(comment)
-
-    assert enriched_body is None
+    assert enriched_body == expected
 
 
-def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_reading_all_ref_location_lines(
+def test_enrich_bc_ref_locations_with_source_returns_none_if_error_occurs_while_reading_all_ref_location_lines(
     filepath_1, filepath_2
 ):
     comment_body = dedent(f"""
@@ -125,12 +94,12 @@ def test_enrich_bc_markdown_with_source_returns_none_if_error_occurs_while_readi
 
     filepath_2.unlink()  # Will cause a FileNotFoundError
 
-    enriched_body = enrich_bc_markdown_with_source(comment)
+    enriched_body = enrich_bc_ref_locations_with_source(comment)
 
     assert enriched_body is None
 
 
-def test_enrich_bc_markdown_with_source_returns_keeps_only_reference_locations_that_exist(
+def test_enrich_bc_ref_locations_with_source_keeps_only_reference_locations_that_exist(
     filepath_1, filepath_2, filepath_3
 ):
     comment_body = dedent(f"""
@@ -156,15 +125,11 @@ def test_enrich_bc_markdown_with_source_returns_keeps_only_reference_locations_t
 
     filepath_3.unlink()  # Will cause a FileNotFoundError
 
-    enriched_body = enrich_bc_markdown_with_source(comment)
+    enriched_body = enrich_bc_ref_locations_with_source(comment)
 
-    assert (
-        enriched_body
-        == dedent(f"""
-    ```python
-    def test_1(): pass
-    ```
-
+    expected = (
+        "\n"
+        + dedent(f"""
     This change breaks 1 usages of `test_1` across 1 files
 
     #Symbol: `test_1`
@@ -177,3 +142,5 @@ def test_enrich_bc_markdown_with_source_returns_keeps_only_reference_locations_t
     ```
     """).lstrip()
     )
+
+    assert enriched_body == expected

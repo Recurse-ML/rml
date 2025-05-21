@@ -288,8 +288,10 @@ def create_comment_diff(
         diff_syntax = make_comment_syntax(lines=full_diff_lines)
         diff_panel = Panel(
             diff_syntax,
-            style=Style(bgcolor="#1c1c1c"),  # Using 'black' here doesn't work for some reason
-            border_style="dim", # dim border for better readability
+            style=Style(
+                bgcolor="#1c1c1c"
+            ),  # Using 'black' here doesn't work for some reason
+            border_style="dim",  # dim border for better readability
             padding=(0, 1),  # Horizontal padding for better readability
         )
         elements.append(diff_panel)
