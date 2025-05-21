@@ -1,11 +1,10 @@
 lint-check:
-	.venv/bin/ruff check --no-fix
-	.venv/bin/ruff format --check
+	env/bin/ruff check --no-fix
+	env/bin/ruff format --check
 
 lint:
-	# TODO: change CI to use env/bin
-	.venv/bin/ruff check --fix
-	.venv/bin/ruff format
+	env/bin/ruff check --fix
+	env/bin/ruff format
 
 bundle:
 	pyinstaller src/rml/__init__.py --name rml

@@ -14,6 +14,10 @@ jobs:
       id-token: 'write'
 
     steps:
+      - name: Set environment variables
+        run: |
+          echo "VIRTUAL_ENV=${{ github.workspace }}/env" >> $GITHUB_ENV
+          echo "UV_PROJECT_ENVIRONMENT=${{ github.workspace }}/env" >> $GITHUB_ENV
       - name: Check out repository
         uses: actions/checkout@v4
   
