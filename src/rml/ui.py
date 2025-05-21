@@ -286,7 +286,13 @@ def create_comment_diff(
             full_diff_lines.extend(diff_str_lines_after_comment[:context_window])
 
         diff_syntax = make_comment_syntax(lines=full_diff_lines)
-        elements.append(diff_syntax)
+        diff_panel = Panel(
+            diff_syntax,
+            style=Style(bgcolor="#1c1c1c"),  # Using 'black' here doesn't work for some reason
+            border_style="dim", # dim border for better readability
+            padding=(0, 1),  # Horizontal padding for better readability
+        )
+        elements.append(diff_panel)
 
     return elements
 
