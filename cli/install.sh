@@ -62,6 +62,13 @@ if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$INSTALL_DIR"; then
     exit 1
 fi
 
+# Copy version file to installation directory
+echo "Installing version file"
+if ! cp "${TEMP_DIR}/version.txt" "$INSTALL_DIR/rml/version.txt"; then
+    echo "Error: Failed to copy version file"
+    exit 1
+fi
+
 echo "Symlinking rml to $BIN_DIR/rml"
 if ! ln -sf "$INSTALL_DIR/rml/rml" "$BIN_DIR/rml"; then
     echo "Error: Failed to create symbolic link"

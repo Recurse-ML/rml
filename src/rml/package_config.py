@@ -4,10 +4,12 @@ from rich.logging import RichHandler
 
 _current_dir = Path(__file__).parent
 PROJECT_ROOT = (_current_dir / "../../").resolve()
+INSTALL_SCRIPT_PATH = PROJECT_ROOT / "cli/install.sh"
 
 LOG_LEVEL = "DEBUG"
 LOG_DIR = PROJECT_ROOT / "logs"
 VERSION_CHECK_URL = "https://storage.googleapis.com/squash-public/version.txt"
+VERSION_FILE_PATH = Path("/usr/local/share/rml/version.txt")
 
 if os.getenv("U_HOST") is not None:
     HOST = os.getenv("U_HOST")

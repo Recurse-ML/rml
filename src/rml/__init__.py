@@ -1,8 +1,6 @@
 import sys
 import click
 import pydantic
-import json
-from packaging import version
 import tomllib
 from pathlib import Path
 
@@ -10,7 +8,7 @@ from typing import Any, Optional
 from datetime import datetime
 import time
 from httpx import Client, HTTPStatusError, RequestError
-from plumbum import ProcessExecutionError, local
+from plumbum import ProcessExecutionError, local, FG
 from tempfile import TemporaryDirectory
 
 from rich.text import Text
@@ -18,7 +16,12 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from rml.datatypes import Comment, DiffLine, Operator
-from rml.package_config import HOST, PROJECT_ROOT, VERSION_CHECK_URL
+from rml.package_config import (
+    HOST,
+    INSTALL_SCRIPT_PATH,
+    VERSION_CHECK_URL,
+    VERSION_FILE_PATH,
+)
 from rml.package_logger import logger
 from rml.ui import Workflow, Step, render_comments
 
@@ -27,10 +30,12 @@ client = Client(base_url=HOST)
 
 
 def get_local_version() -> str:
-    pyproject_path = PROJECT_ROOT / "pyproject.toml"
-    pyproject_str = pyproject_path.read_text()
-    pyproject_dict = tomllib.loads(pyproject_str)
-    return pyproject_dict["project"]["version"]
+    if not VERSION_FILE_PATH.exists():
+        logger.error(
+            f"Error in determining local version. Please run the install.sh script again."
+        )
+        sys.exit(1)
+    return VERSION_FILE_PATH.read_text().strip()
 
 
 def get_remote_version() -> str:
@@ -298,10 +303,15 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         local_version = get_local_version()
         remote_version = get_remote_version()
         if local_version != remote_version:
-            print("Upgrade needed")
-            print(f"Local version: {local_version}")
-            print(f"Remote version: {remote_version}")
-            sys.exit(1)
+            if click.confirm(
+                f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
+                default=False,
+            ):
+                local[INSTALL_SCRIPT_PATH] & FG()
+            else:
+                click.echo("rml requires latest version to run, please update")
+                sys.exit(0)
+
     except Exception as e:
         logger.error(
             f"An error occured when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
