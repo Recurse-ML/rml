@@ -5,6 +5,7 @@ set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
 # Configuration
+VERSION_URL="https://storage.googleapis.com/squash-public/version.txt"
 ARCHIVE_URL="https://storage.googleapis.com/squash-public/rml.tar.gz"
 INSTALL_DIR="/usr/local/share"
 BIN_DIR="/usr/local/bin"
@@ -31,6 +32,12 @@ for dep in "${DEPS[@]}"; do
     fi
 done
 
+echo "Downloading version information"
+if ! curl -fsSL "$VERSION_URL" -o "${TEMP_DIR}/version.txt"; then
+    echo "Error: Failed to download version information"
+    exit 1
+fi
+
 echo "Downloading rml.tar.gz"
 if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/rml.tar.gz"; then
     echo "Error: Download failed"
@@ -46,6 +53,12 @@ fi
 echo "Extracting rml.tar.gz to $INSTALL_DIR/rml"
 if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$INSTALL_DIR"; then
     echo "Error: Extraction failed"
+    # Restore backup on failure
+    if [ -d "$BACKUP_DIR/rml" ]; then
+        echo "Restoring backup..."
+        rm -rf "$INSTALL_DIR/rml"
+        mv "$BACKUP_DIR/rml" "$INSTALL_DIR/rml"
+    fi
     exit 1
 fi
 
@@ -66,5 +79,6 @@ if ! rml --help &> /dev/null; then
     echo "WARNING: $BIN_DIR is not in your PATH, you should add it!"
 fi
 
-echo "Successfully installed rml to $BIN_DIR/rml"
+VERSION=$(cat "${TEMP_DIR}/version.txt")
+echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
 echo "Check files for bugs using \"rml <target filename>\" from within your repo"

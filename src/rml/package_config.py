@@ -7,7 +7,7 @@ PROJECT_ROOT = (_current_dir / "../../").resolve()
 
 LOG_LEVEL = "DEBUG"
 LOG_DIR = PROJECT_ROOT / "logs"
-
+VERSION_CHECK_URL = "https://storage.googleapis.com/squash-public/version.txt"
 
 if os.getenv("U_HOST") is not None:
     HOST = os.getenv("U_HOST")
