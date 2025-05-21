@@ -1,10 +1,10 @@
 lint-check:
-	env/bin/ruff check --no-fix
-	env/bin/ruff format --check
+	ruff check --no-fix
+	ruff format --check
 
 lint:
-	env/bin/ruff check --fix
-	env/bin/ruff format
+	ruff check --fix
+	ruff format
 
 bundle:
 	pyinstaller src/rml/__init__.py --name rml
