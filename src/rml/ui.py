@@ -18,7 +18,7 @@ from collections import defaultdict
 from enum import Enum
 from plumbum import local
 
-from rml.datatypes import Comment
+from rml.datatypes import APICommentResponse
 
 from rml.utils import (
     parse_diff_str_multi_hunk,
@@ -183,7 +183,7 @@ def enrich_affected_locations(markdown_content: str) -> str:
 
 
 def render_comment(
-    comment: Comment,
+    comment: APICommentResponse,
     logger: Logger,
     use_ruler: bool = False,
     context_window: int = 50,
@@ -282,7 +282,7 @@ def render_comment(
     return Group(*ui_elements)
 
 
-def render_comments(comments: list[Comment], console: Console, logger: Logger):
+def render_comments(comments: list[APICommentResponse], console: Console, logger: Logger):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
     and renders the comments of that file in order along with their diffs.
