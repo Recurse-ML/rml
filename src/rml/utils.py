@@ -203,7 +203,7 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]
         )
     except (FileNotFoundError, PermissionError):
         logger.warning(
-            f"Failed to read breaking change line at{comment.relative_path}:{comment.line_no}",
+            f"Failed to read breaking change line at {comment.relative_path}:{comment.line_no}",
             exc_info=True,
         )
     except IndexError:
@@ -242,10 +242,11 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]
             )
             continue
 
+        ref_location_language = get_language_from_path(Path(ref_location.relative_path))
         enriched_reference_locations.append(
             f"{ref_location.relative_path}:{ref_location.line_no}"
             + "\n"
-            + f"```{language}\n{ref_location_line_src}\n```\n"
+            + f"```{ref_location_language}\n{ref_location_line_src}\n```\n"
         )
 
     if len(enriched_reference_locations) == 0:
