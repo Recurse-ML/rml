@@ -36,5 +36,9 @@ jobs:
       - name: Install dependencies
         run: make install-test
 
+      - name: Set up path
+          . $VIRTUAL_ENV/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
       - name: Run unit tests
         run: make unit-test
