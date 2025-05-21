@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import rich
 from logging import Logger
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from rich.console import Group, Console
 from rich.live import Live
 from rich.table import Table
@@ -136,16 +136,32 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_bc_markdown_with_source(comment: APICommentResponse) -> str:
+def enrich_bc_markdown_with_source(comment: APICommentResponse) -> Optional[str]:
     """
     Enriches the reference locations of an APICommentResponse for breaking change
     by reading the file content for both the breaking change line and the reference locations.
+
+    Args:
+        comment: The APICommentResponse to enrich.
+
+    Returns:
+        The enriched markdown string. Returns None if
+        - Error occurs while reading the breaking change line.
+        - Errors occurs while reading all of the reference locations.
     """
     enriched_body = ""
 
-    bc_line_src = (
-        Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
-    )
+    try:
+        bc_line_src = (
+            Path(comment.relative_path).read_text().splitlines()[comment.line_no - 1]
+        )
+    except (FileNotFoundError, PermissionError):
+        logger.warning(
+            f"Failed to read breaking change line at{comment.relative_path}:{comment.line_no}",
+            exc_info=True,
+        )
+        return None
+
     bc_language = get_language_from_path(Path(comment.relative_path))
     enriched_body += f"```{bc_language}\n{bc_line_src}\n```\n"
 
@@ -153,17 +169,35 @@ def enrich_bc_markdown_with_source(comment: APICommentResponse) -> str:
     bug_desc, _ = comment.body.split(reference_section_marker)
     enriched_body += bug_desc + reference_section_marker + "\n\n"
 
-    for reference_location in comment.reference_locations:
-        src_lines = Path(reference_location.relative_path).read_text().splitlines()
-        if 1 <= reference_location.line_no <= len(src_lines):
-            target_line_content = src_lines[reference_location.line_no - 1]
-            language = get_language_from_path(Path(reference_location.relative_path))
-            enriched_body += str(reference_location) + "\n"
-            enriched_body += f"```{language}\n{target_line_content}\n```\n"
+    enriched_reference_locations = []
+
+    for ref_location in comment.reference_locations:
+        try:
+            src_lines = Path(ref_location.relative_path).read_text().splitlines()
+        except (FileNotFoundError, PermissionError):
+            logger.warning(
+                f"Failed to read reference location at {ref_location.relative_path}:{ref_location.line_no}",
+                exc_info=True,
+            )
+            continue
+
+        if 1 <= ref_location.line_no <= len(src_lines):
+            ref_location_line_src = src_lines[ref_location.line_no - 1]
+            language = get_language_from_path(Path(ref_location.relative_path))
+            enriched_reference_locations.append(
+                f"{ref_location.relative_path}:{ref_location.line_no}"
+                + "\n"
+                + f"```{language}\n{ref_location_line_src}\n```\n"
+            )
         else:
             logger.warning(
-                f"Line number {reference_location.line_no} is out of bounds for {reference_location.relative_path}"
+                f"Line number {ref_location.line_no} is out of bounds for {ref_location.relative_path}"
             )
+
+    if len(enriched_reference_locations) == 0:
+        return None
+    else:
+        enriched_body += "\n".join(enriched_reference_locations)
 
     return enriched_body
 
@@ -180,21 +214,34 @@ def render_comment(
     Args:
         - `context_window` controls how much context of the diff is displayed around each comment on both the sides.
         - `use_ruler` draws a horizontal ruler below the comment if set.
+    Returns:
+        A Group of UI elements to be rendered.
     """
     ui_elements = []
 
     if comment.reference_locations is not None:
         markdown_content = enrich_bc_markdown_with_source(comment)
-        comment_content = Markdown(markdown_content)
+        if markdown_content is None:
+            logger.warning(
+                f"Failed to enrich breaking change comment at {comment.relative_path}:{comment.line_no},"
+                "not displaying the comment"
+            )
+            comment_panel = None
+        else:
+            comment_panel = Panel(
+                Markdown(markdown_content),
+                title=f"{comment.relative_path}:{comment.line_no}",
+                style=Style(bold=True, bgcolor="black"),
+            )
     else:
-        comment_content = comment.body
+        comment_panel = Panel(
+            comment.body,
+            title=f"{comment.relative_path}:{comment.line_no}",
+            style=Style(bold=True, bgcolor="black"),
+        )
 
-    comment_panel = Panel(
-        comment_content,
-        title=f"{comment.relative_path}:{comment.line_no}",
-        style=Style(bold=True, bgcolor="black"),
-    )
-    ui_elements.append(comment_panel)
+    if comment_panel is not None:
+        ui_elements.append(comment_panel)
 
     # TODO: get git diff from API.
     git_diff = local["git"]["diff", comment.relative_path]()
