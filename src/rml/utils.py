@@ -1,6 +1,7 @@
 import re
 import time
-from rml.datatypes import DiffLine, Operator, Diff
+
+from rml.datatypes import Diff, DiffLine, Operator
 
 DIFF_HEADER_PTRN = re.compile(
     r"@@\s-(?P<old_start>\d+)(?:,(?P<old_len>\d+))?\s+\+(?P<new_start>\d+)(?:,(?P<new_len>\d+))?\s@@"

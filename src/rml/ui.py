@@ -1,29 +1,26 @@
-from pathlib import Path
-import rich
+from collections import defaultdict
+from enum import Enum
 from logging import Logger
+from pathlib import Path
 from typing import Any, Callable
-from rich.console import Group, Console
+
+from plumbum import local
+from rich.console import Console, Group
 from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.spinner import Spinner
+from rich.style import Style
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
-from rich.spinner import Spinner
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.style import Style
-from rich.rule import Rule
-from rich.markdown import Markdown
-
-from collections import defaultdict
-
-from enum import Enum
-from plumbum import local
 
 from rml.datatypes import APICommentResponse
-
 from rml.utils import (
-    parse_diff_str_multi_hunk,
-    make_diff_header,
     get_language_from_path,
+    make_diff_header,
+    parse_diff_str_multi_hunk,
 )
 
 
@@ -282,7 +279,9 @@ def render_comment(
     return Group(*ui_elements)
 
 
-def render_comments(comments: list[APICommentResponse], console: Console, logger: Logger):
+def render_comments(
+    comments: list[APICommentResponse], console: Console, logger: Logger
+):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
     and renders the comments of that file in order along with their diffs.

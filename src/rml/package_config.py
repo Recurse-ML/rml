@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from rich.logging import RichHandler
 
 _current_dir = Path(__file__).parent
 PROJECT_ROOT = (_current_dir / "../../").resolve()
