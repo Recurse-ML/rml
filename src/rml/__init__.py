@@ -14,7 +14,7 @@ from rich.text import Text
 from rich.console import Console
 from rich.logging import RichHandler
 
-from rml.datatypes import Comment, DiffLine, Operator
+from rml.datatypes import APICommentResponse
 from rml.package_config import HOST
 from rml.package_logger import logger
 from rml.ui import Workflow, Step, render_comments
@@ -44,7 +44,7 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
+def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     # TODO: retry on server errors
     try:
         response = client.get(f"/api/check/{check_id}/")
@@ -53,10 +53,12 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         logger.debug(response_body)
         comments = response_body.get("comments", None)
         if comments is not None:
-            comments = list(map(Comment.model_validate, comments))
+            comments = list(map(APICommentResponse.model_validate, comments))
         return (response_body["status"], comments)
     except pydantic.ValidationError as e:
-        logger.error("Failed to validate Comment model received from the server")
+        logger.error(
+            "Failed to validate APICommentResponse model received from the server"
+        )
         raise e
     except HTTPStatusError as e:
         logger.error(
