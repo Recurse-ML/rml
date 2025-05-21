@@ -30,9 +30,7 @@ jobs:
           python-version-file: 'pyproject.toml'
 
       - name: Install dependencies
-        run: |
-          make install-test
-          pip install ruff
+        run: make install-test
 
       - name: Run unit tests
         run: make unit-test
