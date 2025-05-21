@@ -1,7 +1,13 @@
-from typing import Optional, NamedTuple
+from typing import List, Optional, NamedTuple
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+
+class SourceLocation(BaseModel):
+    relative_path: str
+    line_no: int
+
 
 class APICommentResponse(BaseModel):
     body: str
@@ -9,9 +15,20 @@ class APICommentResponse(BaseModel):
     relative_path: str
     line_no: int
     documentation_url: Optional[str] = None
+    reference_locations: Optional[List[SourceLocation]] = None
+
+    @field_validator("reference_locations", mode="before")
+    @classmethod
+    def convert_reference_locations(cls, value):
+        if isinstance(value, list):
+            return [
+                SourceLocation(**loc) if isinstance(loc, dict) else loc for loc in value
+            ]
+        return value
 
     class Config:
         from_attributes = True
+
 
 class Operator(Enum):
     ADD = "+"
