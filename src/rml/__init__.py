@@ -24,6 +24,7 @@ from rml.package_logger import logger
 from rml.ui import Step, Workflow, render_comments
 
 client = Client(base_url=HOST)
+client = Client(base_url=HOST)
 
 
 def get_local_version() -> str:
@@ -36,9 +37,9 @@ def get_local_version() -> str:
 
 
 def get_remote_version() -> str:
-    response = client.get(VERSION_CHECK_URL)
+    response = client.get(VERSION_CHECK_URL, follow_redirects=True)
     response.raise_for_status()
-    return response.text
+    return response.text.strip()
 
 
 def raise_if_not_in_git_repo() -> None:
