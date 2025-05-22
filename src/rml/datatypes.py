@@ -56,18 +56,3 @@ class Diff(NamedTuple):
     old_len: int
     new_len: int
     changes: list[DiffLine]
-
-
-class CommentClassification(Enum):
-    TRUE_POSITIVE = "TRUE_POSITIVE"
-    FALSE_POSITIVE = "FALSE_POSITIVE"
-
-
-class Comment(BaseModel):
-    relative_path: str
-    line_no: int
-    body: str
-    diff_line: Optional[DiffLine] = None
-    classification: Optional[CommentClassification] = None
-    documentation_url: Optional[str] = None
-    created_by: Optional[str] = None

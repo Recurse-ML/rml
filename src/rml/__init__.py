@@ -8,17 +8,37 @@ from typing import Any, Optional
 import click
 import pydantic
 from httpx import Client, HTTPStatusError, RequestError
-from plumbum import ProcessExecutionError, local
+from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
 from rml.datatypes import APICommentResponse
-from rml.package_config import HOST
+from rml.package_config import (
+    HOST,
+    INSTALL_SCRIPT_PATH,
+    VERSION_CHECK_URL,
+    VERSION_FILE_PATH,
+)
 from rml.package_logger import logger
 from rml.ui import Step, Workflow, render_comments
 
 client = Client(base_url=HOST)
+
+
+def get_local_version() -> str:
+    if not VERSION_FILE_PATH.exists():
+        logger.error(
+            "Error in determining local version. Please run the install.sh script again."
+        )
+        sys.exit(1)
+    return VERSION_FILE_PATH.read_text().strip()
+
+
+def get_remote_version() -> str:
+    response = client.get(VERSION_CHECK_URL)
+    response.raise_for_status()
+    return response.text
 
 
 def raise_if_not_in_git_repo() -> None:
@@ -281,6 +301,25 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     help="Head commit to analyze. If None analyzes uncommited changes.",
 )
 def main(target_filenames: list[str], base: str, head: str) -> None:
+    try:
+        local_version = get_local_version()
+        remote_version = get_remote_version()
+        if local_version != remote_version:
+            if click.confirm(
+                f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
+                default=False,
+            ):
+                local[INSTALL_SCRIPT_PATH] & FG()
+            else:
+                click.echo("rml requires latest version to run, please update")
+                sys.exit(0)
+
+    except Exception as e:
+        logger.error(
+            f"An error occured when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+        )
+        sys.exit(1)
+
     try:
         analyze(target_filenames, base=base, head=head)
         sys.exit(0)
