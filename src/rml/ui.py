@@ -212,9 +212,6 @@ def render_comment(
     if comment_panel is not None:
         ui_elements.append(comment_panel)
 
-    # Add optional elements
-    if comment.documentation_url is not None:
-        ui_elements.append(Text(f"More info: {comment.documentation_url}\n"))
     if use_ruler:
         ui_elements.append(Rule(style=Style(color="grey50")))
 
