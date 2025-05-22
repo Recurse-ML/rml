@@ -8,11 +8,13 @@ trap 'echo "Error on line $LINENO"' ERR
 VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
 ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/rml.tar.gz"
 
-# Default installation directories following XDG Base Directory Specification
-XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-XDG_BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"
-DATA_DIR="${XDG_DATA_HOME}/rml"
-BIN_DIR="${XDG_BIN_HOME}"
+# Installation directories
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.rml}"
+BIN_DIR="${XDG_BIN_HOME:-$HOME/.rml/bin}"
+
+# Create directories if they don't exist
+mkdir -p "$DATA_DIR"
+mkdir -p "$BIN_DIR"
 
 TEMP_DIR="$(mktemp -d)"
 BACKUP_DIR="$(mktemp -d)"
@@ -22,9 +24,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Create directories if they don't exist
-mkdir -p "$DATA_DIR"
-mkdir -p "$BIN_DIR"
 
 # Check Dependencies
 declare -a DEPS=("git" "tar" "curl")
@@ -79,10 +78,61 @@ if ! $BIN_DIR/rml --help &> /dev/null; then
     exit 1
 fi
 
-if ! rml --help &> /dev/null; then
-    echo "WARNING: $BIN_DIR is not in your PATH, you should add it!"
-fi
+detect_shell_config() {
+    local shell_name
+    local config_file
+    
+    # Get the current shell name
+    shell_name=$(basename "$SHELL")
+    
+    case "$shell_name" in
+        "bash")
+            if [ -f "$HOME/.bash_profile" ]; then
+                config_file="$HOME/.bash_profile"
+            elif [ -f "$HOME/.bash_login" ]; then
+                config_file="$HOME/.bash_login"
+            elif [ -f "$HOME/.profile" ]; then
+                config_file="$HOME/.profile"
+            else
+                config_file="$HOME/.bashrc"
+            fi
+            ;;
+        "zsh")
+            config_file="$HOME/.zshrc"
+            ;;
+        "fish")
+            if [ -f "$HOME/.config/fish/config.fish" ]; then
+                config_file="$HOME/.config/fish/config.fish"
+            else
+                config_file="$HOME/.fishrc"
+            fi
+            ;;
+        "ksh")
+            config_file="$HOME/.kshrc"
+            ;;
+        "tcsh")
+            config_file="$HOME/.tcshrc"
+            ;;
+        "csh")
+            config_file="$HOME/.cshrc"
+            ;;
+        *)
+            # Default to .profile for other shells
+            config_file="$HOME/.profile"
+            ;;
+    esac
+    
+    echo "$config_file"
+}
+
 
 VERSION=$(cat "${TEMP_DIR}/version.txt")
 echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
-echo "Check files for bugs using \"rml <target filename>\" from within your repo"
+echo "Check files for bugs using \"rml <target filename>\" from within your repo\n"
+
+if ! rml --help &> /dev/null; then
+    SHELL_CONFIG=$(detect_shell_config)
+    echo "WARNING: To use rml from anywhere, run this command to add PATH to your shell config file ($SHELL_CONFIG):"
+    echo "echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> $SHELL_CONFIG"
+fi
+
