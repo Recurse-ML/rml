@@ -1,6 +1,10 @@
 import re
 import time
-from rml.datatypes import DiffLine, Operator, Diff
+from pathlib import Path
+from typing import Optional
+
+from rml.datatypes import APICommentResponse, Diff, DiffLine, Operator
+from rml.package_logger import logger
 
 DIFF_HEADER_PTRN = re.compile(
     r"@@\s-(?P<old_start>\d+)(?:,(?P<old_len>\d+))?\s+\+(?P<new_start>\d+)(?:,(?P<new_len>\d+))?\s@@"
@@ -129,7 +133,7 @@ def wait(secs):
     return decorator
 
 
-def get_language_from_path(file_path: str) -> str:
+def get_language_from_path(file_path: Path) -> str:
     """
     Maps a file path to its corresponding language identifier for syntax highlighting.
 
@@ -175,7 +179,60 @@ def get_language_from_path(file_path: str) -> str:
         ".cs": "csharp",
     }
 
-    import os
-
-    _, ext = os.path.splitext(file_path.lower())
+    ext = file_path.suffix
     return extension_map.get(ext, "text")
+
+
+def enrich_bc_ref_locations_with_source(comment: APICommentResponse) -> Optional[str]:
+    """
+    Enriches the reference locations of an APICommentResponse for breaking change
+    by reading the file content for each reference location.
+
+    Args:
+        comment: The APICommentResponse to enrich.
+
+    Returns:
+        The enriched markdown string with reference locations. Returns None if
+        errors occur while reading all of the reference locations.
+    """
+    enriched_body = ""
+
+    reference_section_marker = "## Affected locations"
+    bug_desc, _ = comment.body.split(reference_section_marker)
+    enriched_body += bug_desc + reference_section_marker + "\n\n"
+
+    enriched_reference_locations = []
+
+    for ref_location in comment.reference_locations:
+        try:
+            ref_location_line_src = (
+                Path(ref_location.relative_path)
+                .read_text()
+                .splitlines()[ref_location.line_no - 1]
+            )
+        except (FileNotFoundError, PermissionError):
+            logger.warning(
+                f"Failed to read reference location at {ref_location.relative_path}:{ref_location.line_no}",
+                exc_info=True,
+            )
+            continue
+        except IndexError:
+            logger.warning(
+                f"Reference location at {ref_location.relative_path}:{ref_location.line_no} is out of bounds",
+                exc_info=True,
+            )
+            continue
+
+        ref_location_language = get_language_from_path(Path(ref_location.relative_path))
+        enriched_reference_locations.append(
+            f"{ref_location.relative_path}:{ref_location.line_no}"
+            + "\n"
+            + f"```{ref_location_language}\n{ref_location_line_src}\n```\n"
+        )
+
+    if len(enriched_reference_locations) == 0:
+        return None
+    else:
+        enriched_body += "\n".join(enriched_reference_locations)
+
+    return enriched_body

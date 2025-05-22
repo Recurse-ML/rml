@@ -1,21 +1,19 @@
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Any, Optional
+
 import click
 import pydantic
-import tomllib
-from pathlib import Path
-
-from typing import Any, Optional
-from datetime import datetime
-import time
 from httpx import Client, HTTPStatusError, RequestError
-from plumbum import ProcessExecutionError, local, FG
-from tempfile import TemporaryDirectory
-
-from rich.text import Text
+from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.text import Text
 
-from rml.datatypes import Comment, DiffLine, Operator
+from rml.datatypes import APICommentResponse
 from rml.package_config import (
     HOST,
     INSTALL_SCRIPT_PATH,
@@ -23,8 +21,7 @@ from rml.package_config import (
     VERSION_FILE_PATH,
 )
 from rml.package_logger import logger
-from rml.ui import Workflow, Step, render_comments
-
+from rml.ui import Step, Workflow, render_comments
 
 client = Client(base_url=HOST)
 
@@ -32,7 +29,7 @@ client = Client(base_url=HOST)
 def get_local_version() -> str:
     if not VERSION_FILE_PATH.exists():
         logger.error(
-            f"Error in determining local version. Please run the install.sh script again."
+            "Error in determining local version. Please run the install.sh script again."
         )
         sys.exit(1)
     return VERSION_FILE_PATH.read_text().strip()
@@ -66,7 +63,7 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
+def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     # TODO: retry on server errors
     try:
         response = client.get(f"/api/check/{check_id}/")
@@ -75,10 +72,12 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[Comment]]]:
         logger.debug(response_body)
         comments = response_body.get("comments", None)
         if comments is not None:
-            comments = list(map(Comment.model_validate, comments))
+            comments = list(map(APICommentResponse.model_validate, comments))
         return (response_body["status"], comments)
     except pydantic.ValidationError as e:
-        logger.error("Failed to validate Comment model received from the server")
+        logger.error(
+            "Failed to validate APICommentResponse model received from the server"
+        )
         raise e
     except HTTPStatusError as e:
         logger.error(
@@ -142,6 +141,8 @@ def get_files_to_zip(
                 dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {base_commit=}")
+            except UnicodeDecodeError:
+                logger.debug(f"File {filename} is not a text file")
 
         # Export files at head commit or working directory
         for filename in all_filenames:
@@ -161,6 +162,8 @@ def get_files_to_zip(
                     dst_path.write_text(file_content)
             except ProcessExecutionError:
                 logger.debug(f"File {filename} not found in {head_commit=}")
+            except UnicodeDecodeError:
+                logger.debug(f"File {filename} is not a text file")
 
     return dict(
         git_root=git_root,
@@ -240,7 +243,6 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     """Checks for bugs in target_filenames."""
     console = Console()
     handler = RichHandler(
-        rich_tracebacks=True,
         console=console,
         show_time=False,
     )
@@ -256,8 +258,8 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     head_commit = head  # current index state
 
     workflow_steps = [
-        Step(name="Analyzing git repo", func=get_files_to_zip),
-        Step(name="Tarballing repo files", func=make_tar),
+        Step(name="Looking for local changes", func=get_files_to_zip),
+        Step(name="Tarballing files", func=make_tar),
         Step(name="Sending tarball to server", func=post_check),
         Step(name="Waiting for analysis results", func=check_analysis_results),
     ]
@@ -322,7 +324,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         analyze(target_filenames, base=base, head=head)
         sys.exit(0)
     except Exception as e:
-        logger.exception(
+        logger.error(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)

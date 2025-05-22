@@ -1,7 +1,33 @@
-from typing import Optional, NamedTuple
 from enum import Enum
+from typing import List, NamedTuple, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+
+class SourceLocation(BaseModel):
+    relative_path: str
+    line_no: int
+
+
+class APICommentResponse(BaseModel):
+    body: str
+    diff_str: str
+    relative_path: str
+    line_no: int
+    documentation_url: Optional[str] = None
+    reference_locations: Optional[List[SourceLocation]] = None
+
+    @field_validator("reference_locations", mode="before")
+    @classmethod
+    def convert_reference_locations(cls, value):
+        if isinstance(value, list):
+            return [
+                SourceLocation(**loc) if isinstance(loc, dict) else loc for loc in value
+            ]
+        return value
+
+    class Config:
+        from_attributes = True
 
 
 class Operator(Enum):
@@ -30,18 +56,3 @@ class Diff(NamedTuple):
     old_len: int
     new_len: int
     changes: list[DiffLine]
-
-
-class CommentClassification(Enum):
-    TRUE_POSITIVE = "TRUE_POSITIVE"
-    FALSE_POSITIVE = "FALSE_POSITIVE"
-
-
-class Comment(BaseModel):
-    relative_path: str
-    line_no: int
-    body: str
-    diff_line: Optional[DiffLine] = None
-    classification: Optional[CommentClassification] = None
-    documentation_url: Optional[str] = None
-    created_by: Optional[str] = None

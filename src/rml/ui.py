@@ -1,29 +1,25 @@
-from pathlib import Path
-import rich
+from collections import defaultdict
+from enum import Enum
 from logging import Logger
 from typing import Any, Callable
-from rich.console import Group, Console
+
+from plumbum import local
+from rich.console import Console, Group
 from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.spinner import Spinner
+from rich.style import Style
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
-from rich.spinner import Spinner
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.style import Style
-from rich.rule import Rule
-from rich.markdown import Markdown
 
-from collections import defaultdict
-
-from enum import Enum
-from plumbum import local
-
-from rml.datatypes import Comment
-
+from rml.datatypes import APICommentResponse
 from rml.utils import (
-    parse_diff_str_multi_hunk,
+    enrich_bc_ref_locations_with_source,
     make_diff_header,
-    get_language_from_path,
+    parse_diff_str_multi_hunk,
 )
 
 
@@ -134,155 +130,169 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     )
 
 
-def enrich_affected_locations(markdown_content: str) -> str:
+def render_breaking_change(
+    comment: APICommentResponse,
+    logger: Logger,
+    context_window: int = 50,
+) -> Group:
     """
-    Enriches the affected locations section in the markdown content by adding the actual
-    file content for each referenced location.
-
-    Args:
-        markdown_content: The markdown content to enrich
-
-    Returns:
-        The enriched markdown content with file contents added after each location
+    Renders a breaking change comment with:
+    1. The diff showing the breaking change
+    2. The explanation of why it breaks
+    3. The affected locations
     """
-    affected_section_marker = "## Affected locations"
-    if affected_section_marker not in markdown_content:
-        return markdown_content
+    # TODO: should read diff from the response
+    comment_diff = create_comment_diff(comment, logger, context_window)
 
-    prev_context, affected_locations_section = markdown_content.split(
-        affected_section_marker
+    comment_md = enrich_bc_ref_locations_with_source(comment)
+    if comment_md is None:
+        logger.warning(
+            f"Failed to enrich reference locations for comment at {comment.relative_path}:{comment.line_no},"
+            "not displaying the comment"
+        )
+        return None
+
+    panel_content = Group(*comment_diff, Markdown(comment_md))
+
+    return Panel(
+        panel_content,
+        title=f"{comment.relative_path}:{comment.line_no}",
+        style=Style(bold=True, bgcolor="black"),
     )
-    enriched_locations = []
 
-    for line in affected_locations_section.strip().split("\n"):
-        line = line.strip()
-        if len(line) == 0:
-            continue
 
-        enriched_locations.append(line)
-
-        try:
-            path, line_no = line.split(":")
-            path = Path(path.strip())
-            line_no = int(line_no.strip("'"))
-
-            contents = path.read_text()
-            file_lines = contents.splitlines()
-            if 0 <= line_no - 1 < len(file_lines):
-                content = file_lines[line_no - 1].rstrip()
-                language = get_language_from_path(path)
-                enriched_locations.append(f"```{language}\n{content}\n```\n")
-
-        # TODO: better handling here
-        except Exception:
-            continue
-
-    return (
-        prev_context + affected_section_marker + "\n\n" + "\n".join(enriched_locations)
+def render_regular_comment(
+    comment: APICommentResponse,
+    logger: Logger,
+    context_window: int = 50,
+) -> Group:
+    """
+    Renders a regular comment with:
+    1. The diff showing the context
+    2. The comment body
+    """
+    # TODO: should read diff from the response
+    comment_diff = create_comment_diff(comment, logger, context_window)
+    panel_content = Group(*comment_diff, Text(comment.body))
+    return Panel(
+        panel_content,
+        title=f"{comment.relative_path}:{comment.line_no}",
+        style=Style(bold=True, bgcolor="black"),
     )
 
 
 def render_comment(
-    comment: Comment,
+    comment: APICommentResponse,
     logger: Logger,
     use_ruler: bool = False,
     context_window: int = 50,
 ) -> Group:
     """
-    Renders a comment with diffs around the comment body.
-    For breaking change comments, renders the markdown formatted message without diffs.
     Args:
-        - `context_window` controls how much context of the diff is displayed around each comment on both the sides.
+        - `comment` the comment to render
+        - `logger` the logger to use
         - `use_ruler` draws a horizontal ruler below the comment if set.
+        - `context_window` controls how much context of the diff is displayed around each comment on both the sides.
+    Returns:
+        A Group of UI elements to be rendered.
     """
     ui_elements = []
 
-    if (
-        comment.body.strip().startswith("This change breaks")
-        and "## Symbol" in comment.body
-    ):
-        with open(comment.relative_path, "r") as f:
-            line_content = f.readlines()[comment.line_no - 1].rstrip()
-
-        markdown_content = line_content + "\n" + comment.body + "\n"
-        markdown_content = enrich_affected_locations(markdown_content)
-
-        comment_panel = Panel(
-            Markdown(markdown_content),
-            title=f"{comment.relative_path}:{comment.line_no}",
-            style=Style(bold=True, bgcolor="black"),
-        )
-        ui_elements.append(comment_panel)
+    if comment.reference_locations is not None:
+        comment_panel = render_breaking_change(comment, logger, context_window)
     else:
-        comment_panel = Panel(
-            comment.body,
-            title=f"{comment.relative_path}:{comment.line_no}",
-            style=Style(bold=True, bgcolor="black"),
-        )
+        comment_panel = render_regular_comment(comment, logger, context_window)
+
+    if comment_panel is not None:
         ui_elements.append(comment_panel)
 
-        # TODO: get git diff from API.
-        git_diff = local["git"]["diff", comment.relative_path]()
-        parsed_output = parse_diff_str_multi_hunk(git_diff)
-        diffs_with_comment = []
-
-        for diff in parsed_output:
-            diff_new_start_line_no = diff.new_start_line_idx + 1
-            diff_new_end_line_no = diff_new_start_line_no + diff.new_len
-            if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
-                diffs_with_comment.append(diff)
-
-        if len(diffs_with_comment) == 0:
-            logger.warning(
-                f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
-            )
-        else:
-            assert len(diffs_with_comment) == 1, (
-                "Found multiple diffs containing the same lines, this should not happen"
-            )
-
-            diff = diffs_with_comment[0]
-            diff_header = make_diff_header(diff)
-            diff_str_lines_before_comment = []
-            diff_str_lines_after_comment = []
-
-            curr_old_line = diff.old_start_line_idx + 1
-            curr_new_line = diff.new_start_line_idx + 1
-
-            for change in diff.changes:
-                if curr_new_line <= comment.line_no:
-                    diff_str_lines_before_comment.append(
-                        f"{change.operator.value}{change.content}"
-                    )
-                else:
-                    diff_str_lines_after_comment.append(
-                        f"{change.operator.value}{change.content}"
-                    )
-
-                if change.old_line_idx is not None:
-                    curr_old_line += 1
-                if change.new_line_idx is not None:
-                    curr_new_line += 1
-
-            pre_comment_syntax = make_comment_syntax(
-                lines=[diff_header] + diff_str_lines_before_comment[-context_window:]
-            )
-            ui_elements.insert(0, pre_comment_syntax)
-
-            if diff_str_lines_after_comment:
-                post_comment_syntax = make_comment_syntax(
-                    lines=diff_str_lines_after_comment[:context_window],
-                )
-                ui_elements.append(post_comment_syntax)
-
-    if comment.documentation_url is not None:
-        ui_elements.append(Text(f"More info: {comment.documentation_url}\n"))
     if use_ruler:
         ui_elements.append(Rule(style=Style(color="grey50")))
+
     return Group(*ui_elements)
 
 
-def render_comments(comments: list[Comment], console: Console, logger: Logger):
+def create_comment_diff(
+    comment: APICommentResponse,
+    logger: Logger,
+    context_window: int = 50,
+) -> list[Syntax]:
+    """
+    Helper function to get the diff to which the comment belongs.
+    Returns a list of Syntax elements to be rendered.
+    """
+    elements = []
+    git_diff = local["git"]["diff", comment.relative_path]()
+    parsed_output = parse_diff_str_multi_hunk(git_diff)
+    diffs_with_comment = []
+
+    for diff in parsed_output:
+        diff_new_start_line_no = diff.new_start_line_idx + 1
+        diff_new_end_line_no = diff_new_start_line_no + diff.new_len
+        if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
+            diffs_with_comment.append(diff)
+
+    if len(diffs_with_comment) == 0:
+        logger.warning(
+            f"Found a comment {comment.relative_path}:{comment.line_no} with no underlying diff"
+        )
+        return elements
+
+    if len(diffs_with_comment) > 1:
+        logger.error(
+            "Found multiple diffs containing the same lines, this should not happen"
+        )
+        raise AssertionError(
+            "Found multiple diffs containing the same lines, this should not happen"
+        )
+
+    diff = diffs_with_comment[0]
+    diff_header = make_diff_header(diff)
+    diff_str_lines_before_comment = []
+    diff_str_lines_after_comment = []
+
+    curr_old_line = diff.old_start_line_idx + 1
+    curr_new_line = diff.new_start_line_idx + 1
+
+    for change in diff.changes:
+        if curr_new_line <= comment.line_no:
+            diff_str_lines_before_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
+        else:
+            diff_str_lines_after_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
+
+        if change.old_line_idx is not None:
+            curr_old_line += 1
+        if change.new_line_idx is not None:
+            curr_new_line += 1
+
+    if diff_str_lines_before_comment or diff_str_lines_after_comment:
+        full_diff_lines = [diff_header]
+        if diff_str_lines_before_comment:
+            full_diff_lines.extend(diff_str_lines_before_comment[-context_window:])
+        if diff_str_lines_after_comment:
+            full_diff_lines.extend(diff_str_lines_after_comment[:context_window])
+
+        diff_syntax = make_comment_syntax(lines=full_diff_lines)
+        diff_panel = Panel(
+            diff_syntax,
+            style=Style(
+                bgcolor="#1c1c1c"
+            ),  # Using 'black' here doesn't work for some reason
+            border_style="dim",  # dim border for better readability
+            padding=(0, 1),  # Horizontal padding for better readability
+        )
+        elements.append(diff_panel)
+
+    return elements
+
+
+def render_comments(
+    comments: list[APICommentResponse], console: Console, logger: Logger
+):
     """
     Given a list of comments to be rendered, groups them by the file name, rendering each file in its own panel
     and renders the comments of that file in order along with their diffs.
