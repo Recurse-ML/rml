@@ -17,7 +17,7 @@ from rich.text import Text
 from rml.datatypes import APICommentResponse
 from rml.package_config import (
     HOST,
-    INSTALL_SCRIPT_PATH,
+    INSTALL_URL,
     VERSION_CHECK_URL,
     VERSION_FILE_PATH,
 )
@@ -30,7 +30,7 @@ client = Client(base_url=HOST)
 def get_local_version() -> str:
     if not VERSION_FILE_PATH.exists():
         logger.error(
-            "Error in determining local version. Please run the install.sh script again."
+            f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`."
         )
         sys.exit(1)
     return VERSION_FILE_PATH.read_text().strip()
@@ -321,7 +321,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
                 f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
                 default=False,
             ):
-                local[INSTALL_SCRIPT_PATH] & FG()
+                (local["curl"][INSTALL_URL] | local["sh"]) & FG
             else:
                 click.echo("rml requires latest version to run, please update")
                 sys.exit(0)
