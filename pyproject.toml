@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.11.4",
     "pyinstaller>=6.13.0",
     "rich",
+    "backoff>=2.2.1",
 ]
 
 [project.optional-dependencies]
