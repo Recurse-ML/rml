@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 import re
 import rich
@@ -5,19 +6,14 @@ from logging import Logger
 from typing import Any, Callable, Optional
 from rich.console import Group, Console
 from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.spinner import Spinner
+from rich.style import Style
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
-from rich.spinner import Spinner
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.style import Style
-from rich.rule import Rule
-from rich.markdown import Markdown
-
-from collections import defaultdict
-
-from enum import Enum
-from plumbum import local
 
 from rml.datatypes import APICommentResponse
 from rml.package_logger import logger
