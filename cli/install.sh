@@ -10,8 +10,8 @@ ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/rml.tar.
 
 # Default installation directories following XDG Base Directory Specification
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-XDG_BIN_HOME="${HOME}/.local/bin"
-INSTALL_DIR="${XDG_DATA_HOME}/rml"
+XDG_BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"
+DATA_DIR="${XDG_DATA_HOME}/rml"
 BIN_DIR="${XDG_BIN_HOME}"
 
 TEMP_DIR="$(mktemp -d)"
@@ -23,7 +23,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Create directories if they don't exist
-mkdir -p "$INSTALL_DIR"
+mkdir -p "$DATA_DIR"
 mkdir -p "$BIN_DIR"
 
 # Check Dependencies
@@ -47,27 +47,27 @@ if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/rml.tar.gz"; then
     exit 1
 fi
 
-if [ -d "$INSTALL_DIR/rml" ]; then
+if [ -d "$DATA_DIR/rml" ]; then
     echo "Backing up existing installation directory to $BACKUP_DIR/rml"
-    mv "$INSTALL_DIR/rml" "$BACKUP_DIR/rml"
+    mv "$DATA_DIR/rml" "$BACKUP_DIR/rml"
 fi
 
 # Install RML
-echo "Extracting rml.tar.gz to $INSTALL_DIR/rml"
-if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$INSTALL_DIR"; then
+echo "Extracting rml.tar.gz to $DATA_DIR/rml"
+if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$DATA_DIR"; then
     echo "Error: Extraction failed"
     exit 1
 fi
 
 # Copy version file to installation directory
 echo "Installing version file"
-if ! cp "${TEMP_DIR}/version.txt" "$INSTALL_DIR/rml/version.txt"; then
+if ! cp "${TEMP_DIR}/version.txt" "$DATA_DIR/rml/version.txt"; then
     echo "Error: Failed to copy version file"
     exit 1
 fi
 
 echo "Symlinking rml to $BIN_DIR/rml"
-if ! ln -sf "$INSTALL_DIR/rml/rml" "$BIN_DIR/rml"; then
+if ! ln -sf "$DATA_DIR/rml/rml" "$BIN_DIR/rml"; then
     echo "Error: Failed to create symbolic link"
     exit 1
 fi
