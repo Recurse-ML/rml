@@ -1,8 +1,9 @@
-from pathlib import Path
 import re
 import time
+from pathlib import Path
 from typing import Optional
-from rml.datatypes import APICommentResponse, DiffLine, Operator, Diff
+
+from rml.datatypes import APICommentResponse, Diff, DiffLine, Operator
 from rml.package_logger import logger
 
 DIFF_HEADER_PTRN = re.compile(

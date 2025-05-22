@@ -1,9 +1,9 @@
-from pathlib import Path
 from textwrap import dedent
+
+import pytest
+
 from rml.datatypes import APICommentResponse, SourceLocation
 from rml.utils import enrich_bc_ref_locations_with_source
-from unittest.mock import patch
-import pytest
 
 
 @pytest.fixture(scope="function")

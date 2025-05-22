@@ -1,11 +1,10 @@
 from collections import defaultdict
 from enum import Enum
-from pathlib import Path
-import re
-import rich
 from logging import Logger
-from typing import Any, Callable, Optional
-from rich.console import Group, Console
+from typing import Any, Callable
+
+from plumbum import local
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -17,12 +16,10 @@ from rich.table import Table
 from rich.text import Text
 
 from rml.datatypes import APICommentResponse
-from rml.package_logger import logger
-
 from rml.utils import (
-    parse_diff_str_multi_hunk,
-    make_diff_header,
     enrich_bc_ref_locations_with_source,
+    make_diff_header,
+    parse_diff_str_multi_hunk,
 )
 
 

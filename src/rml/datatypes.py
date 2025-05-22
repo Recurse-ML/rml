@@ -1,6 +1,5 @@
-from typing import List, Optional, NamedTuple
 from enum import Enum
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -8,7 +7,6 @@ from pydantic import BaseModel, field_validator
 class SourceLocation(BaseModel):
     relative_path: str
     line_no: int
-
 
 
 class APICommentResponse(BaseModel):
