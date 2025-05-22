@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
+import backoff
 import click
 import pydantic
 from httpx import Client, HTTPStatusError, RequestError
@@ -63,8 +64,20 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
+def should_retry_http_error(e: Exception) -> bool:
+    if isinstance(e, HTTPStatusError):
+        return e.response.status_code // 100 == 5
+    return False
+
+
+@backoff.on_exception(
+    backoff.expo,
+    (HTTPStatusError, RequestError),
+    max_tries=5,
+    max_time=30,
+    giveup=should_retry_http_error,
+)
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
-    # TODO: retry on server errors
     try:
         response = client.get(f"/api/check/{check_id}/")
         response.raise_for_status()
@@ -78,14 +91,6 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentRespon
         logger.error(
             "Failed to validate APICommentResponse model received from the server"
         )
-        raise e
-    except HTTPStatusError as e:
-        logger.error(
-            f"Recurse.ML server returned a failure status code: ({response.status_code})"
-        )
-        raise e
-    except RequestError as e:
-        logger.error("Error occured while connecting to recurse server")
         raise e
 
 
@@ -203,6 +208,13 @@ def make_tar(
     return dict(archive_filename=archive_filename, archive_path=archive_path)
 
 
+@backoff.on_exception(
+    backoff.expo,
+    (HTTPStatusError, RequestError),
+    max_tries=5,
+    max_time=30,
+    giveup=should_retry_http_error,
+)
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
