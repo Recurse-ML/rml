@@ -34,7 +34,11 @@ jobs:
           make install
           make bundle
 
+      - name: Rename artifact
+        run: |
+          mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/rml.tar.gz
+          files: dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
