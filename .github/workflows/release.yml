@@ -53,10 +53,15 @@ jobs:
         with:
           path: artifacts
 
+      - name: Create version file
+        run: |
+          echo "${{ github.event.release.tag_name }}" > version.txt
+
       - name: Publish release with all assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/rml-macos-arm64/rml-macos-arm64.tar.gz
             artifacts/rml-linux-x64/rml-linux-x64.tar.gz
+            version.txt
           draft: false  # Publishes the release
