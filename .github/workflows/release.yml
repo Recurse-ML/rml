@@ -1,103 +1,102 @@
 name: Build and Release
 
 on:
-  # release:
-  #   types: [created]
-  workflow_dispatch:
+  release:
+    types: [created]
 
 jobs:
-  # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
-  # set-env-vars:
-  #   name: Set Environment Variables
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     darwin_os: darwin
-  #     arm64_arch: arm64
-  #     linux_os: linux
-  #     x86_64_arch: x86_64
-  #   steps:
-  #     - name: Set matrix variables
-  #       run: echo "Created env variables accessible by matrix"
+  Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
+  set-env-vars:
+    name: Set Environment Variables
+    runs-on: ubuntu-latest
+    outputs:
+      darwin_os: darwin
+      arm64_arch: arm64
+      linux_os: linux
+      x86_64_arch: x86_64
+    steps:
+      - name: Set matrix variables
+        run: echo "Created env variables accessible by matrix"
 
-  # build:
-  #   name: Build ${{ matrix.os }} ${{ matrix.arch }}
-  #   needs: set-env-vars
-  #   runs-on: ${{ matrix.runner }}
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
-  #         - os: ${{ needs.set-env-vars.outputs.darwin_os }}
-  #           arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
-  #           runner: macos-15
-  #         - os: ${{ needs.set-env-vars.outputs.darwin_os }}
-  #           arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
-  #           runner: macos-13
-  #         - os: ${{ needs.set-env-vars.outputs.linux_os }}
-  #           arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
-  #           runner: ubuntu-24.04-arm
-  #         - os: ${{ needs.set-env-vars.outputs.linux_os }}
-  #           arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
-  #           runner: ubuntu-latest
+  build:
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    needs: set-env-vars
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: macos-15
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            runner: macos-13
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: ubuntu-24.04-arm
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            runner: ubuntu-latest
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.13'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
 
-  #     - name: Install and build
-  #       run: |
-  #         pip install uv
-  #         uv sync --locked
-  #         source .venv/bin/activate
-  #         make install
-  #         make bundle
+      - name: Install and build
+        run: |
+          pip install uv
+          uv sync --locked
+          source .venv/bin/activate
+          make install
+          make bundle
 
-  #     - name: Rename artifact
-  #       run: |
-  #         mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+      - name: Rename artifact
+        run: |
+          mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-  #     - name: Upload artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: rml-${{ matrix.os }}-${{ matrix.arch }}
-  #         path: dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rml-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-  # release:
-  #   name: Publish Release
-  #   needs: [build, set-env-vars]  # Only runs if all build jobs succeed
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - name: Download all artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         path: artifacts
+  release:
+    name: Publish Release
+    needs: [build, set-env-vars]  # Only runs if all build jobs succeed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-  #     - name: Create version file
-  #       run: |
-  #         echo "${{ github.event.release.tag_name }}" > version.txt
+      - name: Create version file
+        run: |
+          echo "${{ github.event.release.tag_name }}" > version.txt
 
-  #     - name: Publish release with all assets
-  #       uses: softprops/action-gh-release@v2
-  #       with:
-  #         files: |
-  #           artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
-  #           artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
-  #           artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
-  #           artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
-  #           version.txt
-  #         draft: true # Keep the draft
+      - name: Publish release with all assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
+            version.txt
+          draft: true # Keep the draft
 
 
   update_installation_script:
     name: Update Installation Script
-    # needs: [release]
+    needs: [release]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,7 +117,7 @@ jobs:
 
       - name: Copy installation script to bucket
         run: |
-          gcloud storage cp cli/install.sh gs://rml-install/temp_index.html
+          gcloud storage cp cli/install.sh gs://rml-install/index.html
 
       - name: Invalidate CDN cache
         run: |
