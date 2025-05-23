@@ -42,14 +42,14 @@ jobs:
   # Hack to have a single branch protection rule instead one per matrix entry
   all-tests-passed:
     name: All Install Tests Passed
-    if: always()
+    if: ${{ always() }}
     needs: test-installation
     runs-on: ubuntu-latest
     steps:
-      - name: Check matrix jobs status
-        if: needs.test-installation.result != 'success'
+      - name: Check matrix status
+        shell: bash
         run: |
-          echo "❌ Some installation tests failed"
-          exit 1
-      - name: Success
-        run: echo "✅ All installation tests passed successfully"
+          if [[ "${{ needs.test-installation.result }}" != "success" ]]; then
+            echo "❌ Matrix job failed or was cancelled"
+            exit 1
+          fi
