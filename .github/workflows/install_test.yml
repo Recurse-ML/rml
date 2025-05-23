@@ -1,11 +1,11 @@
-name: Install Test
+name: Test Installation
 
 on:
   workflow_dispatch: # This workflow must be triggered manually
 
 jobs:
   test-installation:
-    name: Test Installation - ${{ matrix.os }} / ${{ matrix.shell }}
+    name: Test Installation
     strategy:
       fail-fast: false
       matrix:
