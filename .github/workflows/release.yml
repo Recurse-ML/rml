@@ -1,9 +1,8 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -38,7 +37,26 @@ jobs:
         run: |
           mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-      - name: Release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rml-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+
+  release:
+    name: Publish Release
+    needs: build  # Only runs if all build jobs succeed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release with all assets
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+          files: |
+            artifacts/rml-macos-arm64/rml-macos-arm64.tar.gz
+            artifacts/rml-linux-x64/rml-linux-x64.tar.gz
+          draft: false  # Publishes the release
