@@ -54,7 +54,7 @@ jobs:
           path: artifacts
 
       - name: Create version file
-
+        run: |
           echo "${{ github.event.release.tag_name }}" > version.txt
 
       - name: Publish release with all assets
