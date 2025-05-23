@@ -111,14 +111,13 @@ jobs:
         with:
           project_id: 'cerebral-af'
           workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/rml-provider'
-          service_account: 'rml-client-bucket-access-accou@cerebral-af.iam.gserviceaccount.com'
 
       - name: Set up GCP SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Copy installation script to bucket
         run: |
-          gsutil cp cli/install.sh gs://rml-install/temp_index.html
+          gcloud storage cp cli/install.sh gs://rml-install/temp_index.html
 
       - name: Invalidate CDN cache
         run: |
