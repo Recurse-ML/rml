@@ -13,16 +13,10 @@ jobs:
       matrix:
         include:
           - os: macos
-            arch: x64
-            runner: macos-latest
-          - os: macos
             arch: arm64
             runner: macos-14
           - os: linux
             arch: x64
-            runner: ubuntu-latest
-          - os: linux
-            arch: arm64
             runner: ubuntu-latest
 
     steps:
@@ -36,13 +30,9 @@ jobs:
 
       - name: Install and build
         run: |
-          if [ "${{ matrix.os }}" = "linux" ] && [ "${{ matrix.arch }}" = "arm64" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace --platform linux/arm64 python:3.11 bash -c "pip install uv pyinstaller ruff && make bundle"
-          else
-            pip install uv
-            make install
-            make bundle
-          fi
+          pip install uv
+          make install
+          make bundle
 
       - name: Release
         uses: softprops/action-gh-release@v2
