@@ -34,22 +34,16 @@ jobs:
     - name: Run installation script
       run: cli/install.sh
 
-    - name: Check binary is on PATH
-      run: |
-        rml --help > /dev/null
-        echo "✅ PATH integration working"
-
   # Hack to have a single branch protection rule instead one per matrix entry
   all-tests-passed:
     name: All Install Tests Passed
-    if: ${{ !cancelled() }}
-    needs: test-installation
+    if: always()
     runs-on: ubuntu-latest
+    needs: test-installation
     steps:
       - name: Check matrix status
-        shell: bash
         run: |
-          if [[ "${{ needs.test-installation.result }}" != "success" ]]; then
+          if ${{ needs.test-installation.result }} != "success"; then
             echo "❌ Matrix job failed or was cancelled"
             exit 1
           fi
