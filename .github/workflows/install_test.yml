@@ -1,7 +1,7 @@
 name: Test Installation
 
 on:
-  workflow_dispatch: # This workflow must be triggered manually
+  pull_request:
 
 jobs:
   test-installation:
