@@ -1,35 +1,42 @@
 name: Build and Release
 
-env:
-  DARWIN_OS: darwin
-  ARM64_ARCH: arm64
-  LINUX_OS: linux
-  X86_64_ARCH: x86_64
-
 on:
   workflow_dispatch:
   release:
     types: [created]
 
 jobs:
+  # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
+  set-env-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      darwin_os: darwin
+      arm64_arch: arm64
+      linux_os: linux
+      x86_64_arch: x86_64
+    steps:
+      - name: Set matrix variables
+        run: echo "Created env variables accessible by matrix"
+
   build:
     name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    needs: set-env-vars
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
-          - os: ${{ env.DARWIN_OS }}
-            arch: ${{ env.ARM64_ARCH }}
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
             runner: macos-15
-          - os: ${{ env.DARWIN_OS }}
-            arch: ${{ env.X86_64_ARCH }}
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
             runner: macos-13
-          - os: ${{ env.LINUX_OS }}
-            arch: ${{ env.ARM64_ARCH }}
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
             runner: ubuntu-24.04-arm
-          - os: ${{ env.LINUX_OS }}
-            arch: ${{ env.X86_64_ARCH }}
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
             runner: ubuntu-latest
 
     steps:
@@ -59,7 +66,7 @@ jobs:
 
   release:
     name: Publish Release
-    needs: build  # Only runs if all build jobs succeed
+    needs: [build, env-vars]  # Only runs if all build jobs succeed
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -75,9 +82,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/rml-${{ env.DARWIN_OS }}-${{ env.ARM64_ARCH }}/rml-${{ env.DARWIN_OS }}-${{ env.ARM64_ARCH }}.tar.gz
-            artifacts/rml-${{ env.DARWIN_OS }}-${{ env.X86_64_ARCH }}/rml-${{ env.DARWIN_OS }}-${{ env.X86_64_ARCH }}.tar.gz
-            artifacts/rml-${{ env.LINUX_OS }}-${{ env.ARM64_ARCH }}/rml-${{ env.LINUX_OS }}-${{ env.ARM64_ARCH }}.tar.gz
-            artifacts/rml-${{ env.LINUX_OS }}-${{ env.X86_64_ARCH }}/rml-${{ env.LINUX_OS }}-${{ env.X86_64_ARCH }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
             version.txt
           draft: true # Keep the draft
