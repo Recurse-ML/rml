@@ -1,19 +1,15 @@
 # rml
 
 Find bugs in code.
-
-At a high-level, using `rml` looks like:
-1. Change a file.
-2. Run `rml changed/file.py`.
-3. Fix bugs identified by `rml`, repeat.
-
+Using `rml` is as simple as changing a file, and running `rml <filename>`.
+`rml` will analyze your changes for bugs and report them, if it has found any.
 
 
 # Getting Started
 
 ## Installation
 
-If you just want to use `rml` you can install by running: 
+If you just want to use `rml` you can install it by running: 
 
 ```bash
 curl install.recurse.ml | sh
