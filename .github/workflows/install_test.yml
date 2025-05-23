@@ -1,0 +1,40 @@
+name: Test RML Installation
+
+on:
+  workflow_dispatch: # This workflow must be triggered manually
+
+jobs:
+  test-installation:
+    name: Test Installation - ${{ matrix.os }} / ${{ matrix.shell }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            shell: bash
+          - os: ubuntu-22.04
+            shell: zsh
+          - os: macos-13
+            shell: bash
+          - os: macos-13
+            shell: zsh
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Install zsh (Ubuntu only)
+      if: startsWith(matrix.os, 'ubuntu') && matrix.shell == 'zsh'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zsh
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run installation script
+      run: cli/install.sh
+
+    - name: Check binary is on PATH
+      run: |
+        rml --help > /dev/null
+        echo "✅ PATH integration working"
