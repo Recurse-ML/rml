@@ -1,5 +1,11 @@
 name: Build and Release
 
+env:
+  DARWIN_OS: darwin
+  ARM64_ARCH: arm64
+  LINUX_OS: linux
+  X86_64_ARCH: x86_64
+
 on:
   release:
     types: [created]
@@ -11,11 +17,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: darwin
-            arch: arm64
-            runner: macos-14
-          - os: linux
-            arch: amd64
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+          - os: ${{ env.DARWIN_OS }}
+            arch: ${{ env.ARM64_ARCH }}
+            runner: macos-15
+          - os: ${{ env.DARWIN_OS }}
+            arch: ${{ env.X86_64_ARCH }}
+            runner: macos-13
+          - os: ${{ env.LINUX_OS }}
+            arch: ${{ env.ARM64_ARCH }}
+            runner: ubuntu-24.04-arm
+          - os: ${{ env.LINUX_OS }}
+            arch: ${{ env.X86_64_ARCH }}
             runner: ubuntu-latest
 
     steps:
@@ -61,7 +74,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/rml-darwin-arm64/rml-darwin-arm64.tar.gz
-            artifacts/rml-linux-amd64/rml-linux-amd64.tar.gz
+            artifacts/rml-${{ env.DARWIN_OS }}-${{ env.ARM64_ARCH }}/rml-${{ env.DARWIN_OS }}-${{ env.ARM64_ARCH }}.tar.gz
+            artifacts/rml-${{ env.DARWIN_OS }}-${{ env.X86_64_ARCH }}/rml-${{ env.DARWIN_OS }}-${{ env.X86_64_ARCH }}.tar.gz
+            artifacts/rml-${{ env.LINUX_OS }}-${{ env.ARM64_ARCH }}/rml-${{ env.LINUX_OS }}-${{ env.ARM64_ARCH }}.tar.gz
+            artifacts/rml-${{ env.LINUX_OS }}-${{ env.X86_64_ARCH }}/rml-${{ env.LINUX_OS }}-${{ env.X86_64_ARCH }}.tar.gz
             version.txt
           draft: true # Keep the draft
