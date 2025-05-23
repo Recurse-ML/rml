@@ -111,6 +111,7 @@ jobs:
         with:
           project_id: 'cerebral-af'
           workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/rml-provider'
+          service_account: 'rml-client-bucket-access-accou@cerebral-af.iam.gserviceaccount.com'
 
       - name: Set up GCP SDK
         uses: google-github-actions/setup-gcloud@v2
