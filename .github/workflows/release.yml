@@ -7,6 +7,7 @@ env:
   X86_64_ARCH: x86_64
 
 on:
+  workflow_dispatch:
   release:
     types: [created]
 
