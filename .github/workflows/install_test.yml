@@ -41,10 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: test-installation
     steps:
-      - name: Check matrix status
+      - name: All installations ok
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
         run: |
-          if ${{ needs.test-installation.result }} != "success"; then
-            echo "❌ Matrix job failed or was cancelled"
-            exit 1
-          fi
-          echo "✅ All installation tests passed successfully"
+        echo "✅ All installation tests passed successfully"
+        exit 0
+      - name: Some installations failed
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          echo "❌ Some installation tests failed"
+          exit 1
