@@ -38,3 +38,12 @@ jobs:
       run: |
         rml --help > /dev/null
         echo "✅ PATH integration working"
+
+  # Hack to have a single branch protection rule instead one per matrix entry
+  all-tests-passed:
+    name: All Install Tests Passed
+    needs: test-installation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: echo "✅ All installation tests passed successfully"
