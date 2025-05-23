@@ -5,7 +5,7 @@ on:
     types: [created]
 
 jobs:
-  Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
+  # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
   set-env-vars:
     name: Set Environment Variables
     runs-on: ubuntu-latest
