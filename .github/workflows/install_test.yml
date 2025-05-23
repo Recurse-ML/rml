@@ -6,10 +6,73 @@ on:
 jobs:
   test-installation:
     name: Test Installation
-    runs-on: macos-13
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            shell: bash
+          - os: ubuntu-22.04
+            shell: zsh
+          - os: macos-13
+            shell: bash
+          - os: macos-13
+            shell: zsh
+
+    runs-on: ${{ matrix.os }}
+    
     steps:
+    - name: Install zsh (Ubuntu only)
+      if: startsWith(matrix.os, 'ubuntu') && matrix.shell == 'zsh'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zsh
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Run installation script
       run: cli/install.sh
+
+    - name: Debug installation failure
+      if: failure()
+      run: |
+        echo "=== Debugging installation failure ==="
+        echo "Checking if DATA_DIR exists:"
+        ls -la "$HOME/.rml/" || echo "DATA_DIR does not exist"
+        
+        echo "Checking if extracted rml directory exists:"
+        ls -la "$HOME/.rml/rml/" || echo "rml directory does not exist"
+        
+        echo "Checking if rml binary exists and permissions:"
+        ls -la "$HOME/.rml/rml/rml" || echo "rml binary does not exist"
+        
+        echo "Checking if symlink exists:"
+        ls -la "$HOME/.rml/bin/rml" || echo "symlink does not exist"
+        
+        echo "Trying to run rml binary directly:"
+        "$HOME/.rml/rml/rml" --help || echo "Direct binary execution failed"
+        
+        echo "Trying to run via symlink:"
+        "$HOME/.rml/bin/rml" --help || echo "Symlink execution failed"
+        
+        echo "Checking file type:"
+        file "$HOME/.rml/rml/rml" || echo "Could not determine file type"
+
+  # Hack to have a single branch protection rule instead one per matrix entry
+  all-tests-passed:
+    name: All Install Tests Passed
+    if: always()
+    runs-on: ubuntu-latest
+    needs: test-installation
+    steps:
+      - name: All installations ok
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: |
+          echo "✅ All installation tests passed successfully"
+          exit 0
+      - name: Some installations failed
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          echo "❌ Some installation tests failed"
+          exit 1
