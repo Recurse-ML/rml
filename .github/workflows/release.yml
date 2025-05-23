@@ -64,4 +64,4 @@ jobs:
             artifacts/rml-darwin-arm64/rml-darwin-arm64.tar.gz
             artifacts/rml-linux-amd64/rml-linux-amd64.tar.gz
             version.txt
-          draft: false  # Publishes the release
+          draft: true # Keep the draft
