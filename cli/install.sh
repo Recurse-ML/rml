@@ -4,9 +4,37 @@
 set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
+detect_platform() {
+    local os arch
+
+    # Detect OS
+    case "$(uname -s)" in
+        Darwin) os="darwin" ;;
+        Linux) os="linux" ;;
+        *)
+            echo "Error: Unsupported operating system $(uname -s)"
+            exit 1
+            ;;
+    esac
+
+    # Detect architecture
+    case "$(uname -m)" in
+        x86_64) arch="x86_64" ;;
+        arm64|aarch64) arch="arm64" ;;
+        *)
+            echo "Error: Unsupported architecture $(uname -m)"
+            exit 1
+            ;;
+    esac
+
+    echo "${os}-${arch}"
+}
+
 # Configuration
 VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
-ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/rml.tar.gz"
+PLATFORM=$(detect_platform)
+TARBALL_NAME="rml-${PLATFORM}.tar.gz"
+ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/${TARBALL_NAME}"
 
 # Installation directories
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.rml}"
@@ -40,11 +68,12 @@ if ! curl -fsSL "$VERSION_URL" -o "${TEMP_DIR}/version.txt"; then
     exit 1
 fi
 
-echo "Downloading rml.tar.gz"
-if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/rml.tar.gz"; then
+echo "Downloading rml tarball for platform: $PLATFORM"
+if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/${TARBALL_NAME}"; then
     echo "Error: Download failed"
     exit 1
 fi
+
 
 if [ -d "$DATA_DIR/rml" ]; then
     echo "Backing up existing installation directory to $BACKUP_DIR/rml"
@@ -52,8 +81,8 @@ if [ -d "$DATA_DIR/rml" ]; then
 fi
 
 # Install RML
-echo "Extracting rml.tar.gz to $DATA_DIR/rml"
-if ! tar -xzf "${TEMP_DIR}/rml.tar.gz" -C "$DATA_DIR"; then
+echo "Extracting ${TARBALL_NAME} to $DATA_DIR/rml"
+if ! tar -xzf "${TEMP_DIR}/${TARBALL_NAME}" -C "$DATA_DIR"; then
     echo "Error: Extraction failed"
     exit 1
 fi
