@@ -44,8 +44,8 @@ jobs:
       - name: All installations ok
         if: ${{ !(contains(needs.*.result, 'failure')) }}
         run: |
-        echo "✅ All installation tests passed successfully"
-        exit 0
+          echo "✅ All installation tests passed successfully"
+          exit 0
       - name: Some installations failed
         if: ${{ contains(needs.*.result, 'failure') }}
         run: |
