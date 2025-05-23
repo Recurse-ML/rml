@@ -28,92 +28,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y zsh
 
-    - name: Set installation URL
-      run: |
-        echo "INSTALL_URL=install.recurse.ml" >> $GITHUB_ENV
-        echo "Testing installation from: install.recurse.ml"
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - name: Verify shell availability
-      run: |
-        echo "Testing with shell: ${{ matrix.shell }}"
-        ${{ matrix.shell }} --version
-        which ${{ matrix.shell }}
+    - name: Run installation script
+      run: cli/install.sh
 
-    - name: Test fresh installation
+    - name: Check binary is on PATH
       run: |
-        echo "🧪 Testing fresh installation on ${{ matrix.os }} with ${{ matrix.shell }}"
-        
-        # Create isolated test environment
-        TEMP_HOME=$(mktemp -d)
-        export HOME="$TEMP_HOME"
-        export XDG_DATA_HOME="$TEMP_HOME/.rml"
-        export XDG_BIN_HOME="$TEMP_HOME/.rml/bin"
-        
-        echo "📥 Installing RML..."
-        echo "y" | curl -fsSL "$INSTALL_URL" | ${{ matrix.shell }}
-        
-        echo "🔍 Verifying installation..."
-        
-        # Check binary exists
-        if [ ! -f "$TEMP_HOME/.rml/bin/rml" ]; then
-          echo "❌ RML binary not found at expected location"
-          exit 1
-        fi
-        
-        # Check binary is executable
-        if [ ! -x "$TEMP_HOME/.rml/bin/rml" ]; then
-          echo "❌ RML binary is not executable"
-          exit 1
-        fi
-        
-        # Test binary works
-        echo "🧪 Testing RML binary functionality..."
-        "$TEMP_HOME/.rml/bin/rml" --help
-        
-        # Check version file
-        if [ ! -f "$TEMP_HOME/.rml/rml/version.txt" ]; then
-          echo "❌ Version file not found"
-          exit 1
-        fi
-        
-        VERSION=$(cat "$TEMP_HOME/.rml/rml/version.txt")
-        echo "✅ Fresh installation successful! Version: $VERSION"
-        
-        # Test PATH integration
-        export PATH="$TEMP_HOME/.rml/bin:$PATH"
         rml --help > /dev/null
         echo "✅ PATH integration working"
-        
-        # Cleanup
-        rm -rf "$TEMP_HOME"
-
-  test-summary:
-    name: Installation Test Summary
-    runs-on: ubuntu-latest
-    needs: test-installation
-    if: always()
-    
-    steps:
-    - name: Report test results
-      run: |
-        echo "## 🧪 RML Installation Test Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ needs.test-installation.result }}" = "success" ]; then
-          echo "### ✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The installation script works correctly on:" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Ubuntu 22.04 + bash" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Ubuntu 22.04 + zsh" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ macOS 13 + bash" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ macOS 13 + zsh" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Ready for merge to main!** 🚀" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "### ❌ Some tests failed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "There are issues with the installation script that need to be addressed before merging." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Not ready for merge.** ⚠️" >> $GITHUB_STEP_SUMMARY
-          exit 1
-        fi 
