@@ -66,7 +66,7 @@ jobs:
 
   release:
     name: Publish Release
-    needs: [build, env-vars]  # Only runs if all build jobs succeed
+    needs: [build, set-env-vars]  # Only runs if all build jobs succeed
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
