@@ -11,11 +11,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos
+          - os: darwin
             arch: arm64
             runner: macos-14
           - os: linux
-            arch: x64
+            arch: amd64
             runner: ubuntu-latest
 
     steps:
@@ -54,14 +54,14 @@ jobs:
           path: artifacts
 
       - name: Create version file
-        run: |
+
           echo "${{ github.event.release.tag_name }}" > version.txt
 
       - name: Publish release with all assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/rml-macos-arm64/rml-macos-arm64.tar.gz
-            artifacts/rml-linux-x64/rml-linux-x64.tar.gz
+            artifacts/rml-darwin-arm64/rml-darwin-arm64.tar.gz
+            artifacts/rml-linux-amd64/rml-linux-amd64.tar.gz
             version.txt
           draft: false  # Publishes the release
