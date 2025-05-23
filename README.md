@@ -44,7 +44,7 @@ rml funky/src/file.js --base HEAD --head feat/chameleon
 
 Contributions are welcome and highly appreciated.
 This section describes how to set up your local environment for development.
-If you run into any issues reach out on [Discord](https://discord.gg/DHrYe75W), we're here to help🫡.
+If you run into any issues, reach out on [Discord](https://discord.gg/DHrYe75W), we're here to help🫡.
 
 ## Installation (dev)
 
@@ -62,6 +62,6 @@ make install-test
 
 # Support
 
-Having trouble? Check out the [existing issues](https://github.com/recurse-ml/rml/issues/) on GitHub, or feel free to open a new one(https://github.com/recurse-ml/rml/issues/new/).
+Having trouble? Check out the [existing issues](https://github.com/recurse-ml/rml/issues/) on GitHub, or feel free to open a new [one](https://github.com/recurse-ml/rml/issues/new/).
 
 You can also ask for help on [Discord](https://discord.gg/DHrYe75W).
