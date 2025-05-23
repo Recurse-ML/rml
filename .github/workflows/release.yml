@@ -71,6 +71,8 @@ jobs:
     name: Publish Release
     needs: [build, set-env-vars]  # Only runs if all build jobs succeed
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
