@@ -5,9 +5,20 @@ set -euo pipefail
 trap 'echo "Error on line $LINENO"' ERR
 
 
+detect_arch() {
+    local arch=$(uname -m | tr '[:upper:]' '[:lower:]')
+    if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+        echo "arm64"
+    elif [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then
+        echo "amd64"
+    fi
+}
+
 # Configuration
 VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
-PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)
+ARCH=$(detect_arch)
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+PLATFORM="${OS}-${ARCH}"
 TARBALL_NAME="rml-${PLATFORM}.tar.gz"
 ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/${TARBALL_NAME}"
 
