@@ -87,7 +87,6 @@ jobs:
             artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
             artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
             version.txt
-          draft: true # Keep the draft
 
 
   update_installation_script:
