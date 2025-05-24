@@ -118,8 +118,8 @@ jobs:
         run: |
           gcloud compute url-maps invalidate-cdn-cache rml-install-url-map --path "/*"
 
-  bump_pyproject_version:
-    name: Bump pyproject.toml& uv.lock version
+  bump_version:
+    name: Bump version
     needs: [release]
     runs-on: ubuntu-latest
     steps:
@@ -131,10 +131,10 @@ jobs:
           pip install uv
           uv version "${{ github.event.release.tag_name }}"
           uv sync
+          echo "${{ github.event.release.tag_name }}" > version.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add pyproject.toml
-          git add uv.lock
-          git commit -m "Bump version to ${{ github.event.release.tag_name }}" || exit 0
+          git add pyproject.toml version.txt uv.lock
+          git commit -m "Bump version to ${{ github.event.release.tag_name }}"
           git push origin HEAD:main
 
