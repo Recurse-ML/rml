@@ -15,12 +15,13 @@ detect_arch() {
 }
 
 # Configuration
-VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
 ARCH=$(detect_arch)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 PLATFORM="${OS}-${ARCH}"
 TARBALL_NAME="rml-${PLATFORM}.tar.gz"
 ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/${TARBALL_NAME}"
+VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
+VERSION=$(curl -fSsl "${VERSION_URL}")
 
 # Installation directories
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.rml}"
@@ -48,12 +49,6 @@ for dep in "${DEPS[@]}"; do
     fi
 done
 
-echo "Downloading version information"
-if ! curl -fsSL "$VERSION_URL" -o "${TEMP_DIR}/version.txt"; then
-    echo "Error: Failed to download version information"
-    exit 1
-fi
-
 echo "Downloading rml tarball for platform: $PLATFORM"
 if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/${TARBALL_NAME}"; then
     echo "Error: Download failed"
@@ -70,13 +65,6 @@ fi
 echo "Extracting ${TARBALL_NAME} to $DATA_DIR/rml"
 if ! tar -xzf "${TEMP_DIR}/${TARBALL_NAME}" -C "$DATA_DIR"; then
     echo "Error: Extraction failed"
-    exit 1
-fi
-
-# Copy version file to installation directory
-echo "Installing version file"
-if ! cp "${TEMP_DIR}/version.txt" "$DATA_DIR/rml/version.txt"; then
-    echo "Error: Failed to copy version file"
     exit 1
 fi
 
@@ -141,7 +129,6 @@ detect_shell_config() {
 }
 
 
-VERSION=$(cat "${TEMP_DIR}/version.txt")
 echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
 echo "Check files for bugs using \"rml <target filename>\" from within your repo\n"
 
