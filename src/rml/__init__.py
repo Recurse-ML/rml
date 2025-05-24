@@ -1,7 +1,6 @@
 import sys
 import time
 from datetime import datetime
-from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
@@ -19,8 +18,8 @@ from rml.datatypes import APICommentResponse
 from rml.package_config import (
     HOST,
     INSTALL_URL,
-    PACKAGE_NAME,
     VERSION_CHECK_URL,
+    VERSION_FILE_PATH,
 )
 from rml.package_logger import logger
 from rml.ui import Step, Workflow, render_comments
@@ -29,7 +28,12 @@ client = Client(base_url=HOST)
 
 
 def get_local_version() -> str:
-    return version(PACKAGE_NAME)
+    if not VERSION_FILE_PATH.exists():
+        logger.error(
+            f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`."
+        )
+        sys.exit(1)
+    return VERSION_FILE_PATH.read_text().strip()
 
 
 def get_remote_version() -> str:
@@ -314,7 +318,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         remote_version = get_remote_version()
         if local_version != remote_version:
             if click.confirm(
-                f"rml is not up to date (local: {local_version}, latest: {remote_version}), run the install.sh script?",
+                f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
                 default=False,
             ):
                 (local["curl"][INSTALL_URL] | local["sh"]) & FG
