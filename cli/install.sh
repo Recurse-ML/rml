@@ -7,13 +7,7 @@ trap 'echo "Error on line $LINENO"' ERR
 
 # Configuration
 VERSION_URL="https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
-ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then
-    ARCH="arm64"
-fi
-if [ "$ARCH" = "x86_64" ]; then
-    ARCH="amd64"
-fi
+ARCH=$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')
 PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')-${ARCH}"
 TARBALL_NAME="rml-${PLATFORM}.tar.gz"
 ARCHIVE_URL="https://github.com/Recurse-ML/rml/releases/latest/download/${TARBALL_NAME}"
