@@ -4,6 +4,10 @@ on:
   # release:
   #   types: [created]
   workflow_dispatch:
+  inputs:
+    version:
+      description: "Version to bump to"
+      required: true
 
 jobs:
   # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
