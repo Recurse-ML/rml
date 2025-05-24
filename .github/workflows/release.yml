@@ -56,10 +56,6 @@ jobs:
           make install
           make bundle
 
-      - name: Rename artifact
-        run: |
-          mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -92,3 +88,33 @@ jobs:
             artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
             version.txt
           draft: true # Keep the draft
+
+
+  update_installation_script:
+    name: Update Installation Script
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: 'cerebral-af'
+          workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/rml-provider'
+          service_account: 'rml-client-bucket-access-accou@cerebral-af.iam.gserviceaccount.com'
+
+      - name: Set up GCP SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Copy installation script to bucket
+        run: |
+          gcloud storage cp cli/install.sh gs://rml-install/index.html
+
+      - name: Invalidate CDN cache
+        run: |
+          gcloud compute url-maps invalidate-cdn-cache rml-install-url-map --path "/*"
