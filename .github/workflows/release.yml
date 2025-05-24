@@ -134,11 +134,11 @@ jobs:
       - name: Bump version
         run: |
           pip install uv
-          uv version "${{ github.event.release.tag_name }}"
+          uv version "${{ github.event.inputs.version }}"
           uv sync
-          echo "${{ github.event.release.tag_name }}" > version.txt
+          echo "${{ github.event.inputs.version }}" > version.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add pyproject.toml version.txt uv.lock
-          git commit -m "Bump version to ${{ github.event.release.tag_name }}"
+          git commit -m "Bump version to ${{ github.event.inputs.version }}"
           git push origin HEAD:determine-local-version-when-installating-from-source
