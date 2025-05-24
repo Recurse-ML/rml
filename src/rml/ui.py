@@ -3,7 +3,6 @@ from enum import Enum
 from logging import Logger
 from typing import Any, Callable
 
-from plumbum import local
 from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
@@ -222,8 +221,9 @@ def create_comment_diff(
     Returns a list of Syntax elements to be rendered.
     """
     elements = []
-    git_diff = local["git"]["diff", comment.relative_path]()
+    git_diff = comment.diff_str
     parsed_output = parse_diff_str_multi_hunk(git_diff)
+
     diffs_with_comment = []
 
     for diff in parsed_output:
@@ -308,7 +308,9 @@ def render_comments(
         use_rulers[-1] = False
         file_group = Group(
             *(
-                render_comment(comment, logger=logger, use_ruler=use_ruler)
+                render_comment(
+                    comment, logger=logger, use_ruler=use_ruler, context_window=3
+                )
                 for comment, use_ruler in zip(file_comments, use_rulers)
             )
         )
