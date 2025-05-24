@@ -32,7 +32,7 @@ jobs:
           echo "version: $version"
           echo "release tag: ${{ inputs.release_tag }}"
           if [ "$version" != "${{ inputs.release_tag }}" ]; then
-            echo "❌ Version mismatch: uv version does not match release tag. Please update with `uv version ${{ inputs.release_tag }}` and commit the changes."
+            echo "❌ Version mismatch: pyproject.toml version does not match release tag. Please update with 'uv version ${{ inputs.release_tag }}' and commit the changes."
             exit 1
           else
             echo "✅ Version matches release tag."
