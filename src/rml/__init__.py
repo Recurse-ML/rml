@@ -27,12 +27,9 @@ from rml.ui import Step, Workflow, render_comments
 client = Client(base_url=HOST)
 
 
-def get_local_version() -> str:
+def get_local_version() -> Optional[str]:
     if not VERSION_FILE_PATH.exists():
-        logger.error(
-            f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`."
-        )
-        sys.exit(1)
+        return None
     return VERSION_FILE_PATH.read_text().strip()
 
 
@@ -321,7 +318,19 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
                 f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
                 default=False,
             ):
-                (local["curl"][INSTALL_URL] | local["sh"]) & FG
+                if local_version is None:  # User installed from source
+                    try:
+                        (local["git"]["pull", "origin", "main"]) & FG
+                    except ProcessExecutionError as e:
+                        if "fix conflicts" in e.stderr.lower():
+                            click.echo(
+                                "Git pull encountered merge conflicts. Please resolve them and re-run rml."
+                            )
+                            sys.exit(1)
+                        else:
+                            raise
+                else:
+                    (local["curl"][INSTALL_URL] | local["sh"]) & FG
             else:
                 click.echo("rml requires latest version to run, please update")
                 sys.exit(0)

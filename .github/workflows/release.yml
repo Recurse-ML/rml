@@ -131,10 +131,9 @@ jobs:
           pip install uv
           uv version "${{ github.event.release.tag_name }}"
           uv sync
-          echo "${{ github.event.release.tag_name }}" > version.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add pyproject.toml version.txt uv.lock
+          git add pyproject.toml uv.lock
           git commit -m "Bump version to ${{ github.event.release.tag_name }}"
           git push origin HEAD:main
 
