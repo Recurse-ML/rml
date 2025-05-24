@@ -7,9 +7,9 @@ lint:
 	ruff format
 
 bundle:
-	$(eval OUT_NAME := rml-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m))
-	pyinstaller src/rml/__init__.py --name $(OUT_NAME) --noconfirm
-	tar -czf dist/$(OUT_NAME).tar.gz -C dist rml/
+	$(eval TAR_NAME := rml-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(shell uname -m).tar.gz)
+	pyinstaller src/rml/__init__.py --name rml --noconfirm
+	tar -czf dist/$(TAR_NAME) -C dist rml/
 
 install:
 	uv sync --locked
