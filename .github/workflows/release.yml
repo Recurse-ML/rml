@@ -13,7 +13,7 @@ jobs:
       darwin_os: darwin
       arm64_arch: arm64
       linux_os: linux
-      x86_64_arch: x86_64
+      amd64_arch: amd64
     steps:
       - name: Set matrix variables
         run: echo "Created env variables accessible by matrix"
@@ -30,13 +30,13 @@ jobs:
             arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
             runner: macos-15
           - os: ${{ needs.set-env-vars.outputs.darwin_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: macos-13
           - os: ${{ needs.set-env-vars.outputs.linux_os }}
             arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
             runner: ubuntu-24.04-arm
           - os: ${{ needs.set-env-vars.outputs.linux_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: ubuntu-latest
 
     steps:
@@ -83,9 +83,9 @@ jobs:
         with:
           files: |
             artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
-            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.amd64_arch }}/rml-${{ needs.set-env-vars.outputs.darwin_os }}-${{ needs.set-env-vars.outputs.amd64_arch }}.tar.gz
             artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.arm64_arch }}.tar.gz
-            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.x86_64_arch }}.tar.gz
+            artifacts/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.amd64_arch }}/rml-${{ needs.set-env-vars.outputs.linux_os }}-${{ needs.set-env-vars.outputs.amd64_arch }}.tar.gz
             version.txt
 
 
