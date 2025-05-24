@@ -1,8 +1,9 @@
 name: Build and Release
 
 on:
-  release:
-    types: [created]
+  # release:
+  #   types: [created]
+  workflow_dispatch:
 
 jobs:
   # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
@@ -89,31 +90,31 @@ jobs:
             version.txt
 
 
-  update_installation_script:
-    name: Update Installation Script
-    needs: [release]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # update_installation_script:
+  #   name: Update Installation Script
+  #   needs: [release]
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Authenticate with Google Cloud
-        uses: 'google-github-actions/auth@v2'
-        with:
-          project_id: 'cerebral-af'
-          workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/rml-provider'
-          service_account: 'rml-client-bucket-access-accou@cerebral-af.iam.gserviceaccount.com'
+  #     - name: Authenticate with Google Cloud
+  #       uses: 'google-github-actions/auth@v2'
+  #       with:
+  #         project_id: 'cerebral-af'
+  #         workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/rml-provider'
+  #         service_account: 'rml-client-bucket-access-accou@cerebral-af.iam.gserviceaccount.com'
 
-      - name: Set up GCP SDK
-        uses: google-github-actions/setup-gcloud@v2
+  #     - name: Set up GCP SDK
+  #       uses: google-github-actions/setup-gcloud@v2
 
-      - name: Copy installation script to bucket
-        run: |
-          gcloud storage cp cli/install.sh gs://rml-install/index.html
+  #     - name: Copy installation script to bucket
+  #       run: |
+  #         gcloud storage cp cli/install.sh gs://rml-install/index.html
 
-      - name: Invalidate CDN cache
-        run: |
-          gcloud compute url-maps invalidate-cdn-cache rml-install-url-map --path "/*"
+  #     - name: Invalidate CDN cache
+  #       run: |
+  #         gcloud compute url-maps invalidate-cdn-cache rml-install-url-map --path "/*"
