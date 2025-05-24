@@ -56,10 +56,6 @@ jobs:
           make install
           make bundle
 
-      - name: Rename artifact
-        run: |
-          mv dist/rml.tar.gz dist/rml-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
