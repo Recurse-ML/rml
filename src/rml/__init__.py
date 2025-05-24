@@ -1,7 +1,6 @@
 import sys
 import time
 from datetime import datetime
-from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
@@ -29,15 +28,11 @@ client = Client(base_url=HOST)
 
 
 def get_local_version() -> str:
-    if not VERSION_FILE_PATH.exists():  # User installed from source
-        try:
-            local_version = version("rml")
-            return local_version
-        except Exception:
-            logger.error(
-                f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`.",
-            )
-            sys.exit(1)
+    if not VERSION_FILE_PATH.exists():
+        logger.error(
+            f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`."
+        )
+        sys.exit(1)
     return VERSION_FILE_PATH.read_text().strip()
 
 
