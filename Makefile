@@ -7,10 +7,20 @@ lint:
 	ruff format
 
 bundle:
-	$(eval ARCH := $(shell uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/'))
-	$(eval TAR_NAME := rml-$(shell uname -s | tr '[:upper:]' '[:lower:]')-$(ARCH).tar.gz)
-	pyinstaller src/rml/__init__.py --name rml --noconfirm
-	tar -czf dist/$(TAR_NAME) -C dist rml/
+	bash -c '\
+	  detect_arch() { \
+	    arch=$$(uname -m | tr "[:upper:]" "[:lower:]"); \
+	    if [ "$$arch" = "aarch64" ] || [ "$$arch" = "arm64" ]; then \
+	      echo arm64; \
+	    elif [ "$$arch" = "x86_64" ] || [ "$$arch" = "amd64" ]; then \
+	      echo amd64; \
+	    fi; \
+	  }; \
+	  ARCH=$$(detect_arch); \
+	  OS=$$(uname -s | tr "[:upper:]" "[:lower:]"); \
+	  TAR_NAME=rml-$$OS-$$ARCH.tar.gz; \
+	  pyinstaller src/rml/__init__.py --name rml --noconfirm; \
+	  tar -czf dist/$$TAR_NAME -C dist rml/;'
 
 install:
 	uv sync --locked
