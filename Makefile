@@ -33,4 +33,8 @@ unit-test: lint-check
 	pytest --durations=10 tests/unit/
 	
 bump-version:
+	@if [ -z "$(version)" ]; then \
+		echo "Error: version argument is required. Usage: make bump-version version=X.Y.Z"; \
+		exit 1; \
+	fi
 	uv version $(version) && uv sync
