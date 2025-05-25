@@ -22,10 +22,12 @@ dependencies = [
 
 test = [
   "pytest >= 8.0",
-  "pre-commit",
   "ruff >= 0.9",
 ]
 
+dev = [
+  "pre-commit",
+]
 
 [tool.ruff]
 include = ["src/**/*.py", "cli/**/*.py", "tests/**/*.py"]

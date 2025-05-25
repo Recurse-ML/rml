@@ -503,8 +503,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-test = [
+dev = [
     { name = "pre-commit" },
+]
+test = [
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -515,14 +517,14 @@ requires-dist = [
     { name = "click" },
     { name = "httpx" },
     { name = "plumbum", specifier = ">=1.9.0" },
-    { name = "pre-commit", marker = "extra == 'test'" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pydantic", specifier = ">=2.11.4" },
     { name = "pyinstaller", specifier = ">=6.13.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
     { name = "rich" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.9" },
 ]
-provides-extras = ["test"]
+provides-extras = ["test", "dev"]
 
 [[package]]
 name = "ruff"

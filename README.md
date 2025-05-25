@@ -53,7 +53,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then from project root run:
 
 ```bash
-make install-test
+make install-dev
 ```
 
 # Support

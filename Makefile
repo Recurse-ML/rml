@@ -27,9 +27,9 @@ install:
 
 install-test:
 	uv sync --locked --extra test
-	make install-hooks
 
-install-hooks:
+install-dev:
+	uv sync --locked --extra dev
 	pre-commit install
 	pre-commit autoupdate
 
