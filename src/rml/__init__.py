@@ -312,6 +312,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         local_version = get_local_version()
         remote_version = get_remote_version()
         if local_version != remote_version:
+            # TODO: If installed from source, don't force to update
             if click.confirm(
                 f"rml is not up to date (local: {local_version}, latest: {remote_version}), run the install.sh script?",
                 default=False,
