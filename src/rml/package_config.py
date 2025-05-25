@@ -10,7 +10,6 @@ LOG_DIR = PROJECT_ROOT / "logs"
 VERSION_CHECK_URL = (
     "https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
 )
-VERSION_FILE_PATH = PROJECT_ROOT / "version.txt"
 
 if os.getenv("U_HOST") is not None:
     HOST = os.getenv("U_HOST")

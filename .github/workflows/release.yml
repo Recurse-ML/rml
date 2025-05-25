@@ -5,6 +5,34 @@ on:
     types: [created]
 
 jobs:
+  check-version-bump:
+    name: Check Version Bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Package
+        run: |
+          pip install uv
+
+      - name: Check Version
+        run: |
+          version=$(uv version --short)
+          echo "version: $version"
+          echo "release tag: ${{ github.event.release.tag_name }}"
+          if [ "$version" != "${{ github.event.release.tag_name }}" ]; then
+            echo "❌ Version mismatch: pyproject.toml version does not match release tag. Please update with 'uv version ${{ github.event.release.tag_name }}' and commit the changes."
+            exit 1
+          else
+            echo "✅ Version matches release tag."
+          fi
+
   # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
   set-env-vars:
     name: Set Environment Variables

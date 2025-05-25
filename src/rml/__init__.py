@@ -1,6 +1,7 @@
 import sys
 import time
 from datetime import datetime
+from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
@@ -19,7 +20,6 @@ from rml.package_config import (
     HOST,
     INSTALL_URL,
     VERSION_CHECK_URL,
-    VERSION_FILE_PATH,
 )
 from rml.package_logger import logger
 from rml.ui import Step, Workflow, render_comments
@@ -27,13 +27,13 @@ from rml.ui import Step, Workflow, render_comments
 client = Client(base_url=HOST)
 
 
+def installed_from_source() -> bool:
+    # https://pyinstaller.org/en/stable/runtime-information.html#run-time-information
+    return not (getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"))
+
+
 def get_local_version() -> str:
-    if not VERSION_FILE_PATH.exists():
-        logger.error(
-            f"Error in determining local version. Please run `curl {INSTALL_URL} | sh`."
-        )
-        sys.exit(1)
-    return VERSION_FILE_PATH.read_text().strip()
+    return version("rml")
 
 
 def get_remote_version() -> str:
@@ -251,15 +251,10 @@ def check_analysis_results(check_id: str, **kwargs):
     return dict(check_status=check_status, comments=comments)
 
 
-def analyze(target_filenames: list[str], base: str, head: str) -> None:
+def analyze(
+    target_filenames: list[str], base: str, head: str, console: Console
+) -> None:
     """Checks for bugs in target_filenames."""
-    console = Console()
-    handler = RichHandler(
-        console=console,
-        show_time=False,
-    )
-    logger.addHandler(handler)
-
     if len(target_filenames) == 0:
         logger.warning("No target file, no bugs!")
         return
@@ -313,18 +308,33 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     help="Head commit to analyze. If None analyzes uncommited changes.",
 )
 def main(target_filenames: list[str], base: str, head: str) -> None:
+    console = Console()
+    handler = RichHandler(
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
     try:
         local_version = get_local_version()
         remote_version = get_remote_version()
         if local_version != remote_version:
-            if click.confirm(
-                f"rml is not up to date (local: {local_version}, latest: {remote_version}), update?",
-                default=False,
-            ):
-                (local["curl"][INSTALL_URL] | local["sh"]) & FG
+            if installed_from_source():
+                logger.warning(
+                    f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything runs smoothly."
+                )
             else:
-                click.echo("rml requires latest version to run, please update")
-                sys.exit(0)
+                try:
+                    logger.info("Updating rml to latest version...")
+                    (local["curl"][INSTALL_URL] | local["sh"]) & FG
+                    logger.info("rml updated to latest version.")
+                except Exception as e:
+                    logger.error(f"Failed to update rml: {e}")
+                    click.echo(
+                        "rml requires latest version to run. Please update manually with:"
+                    )
+                    click.echo(f"curl {INSTALL_URL} | sh")
+                    sys.exit(1)
 
     except Exception as e:
         logger.error(
@@ -333,7 +343,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         sys.exit(1)
 
     try:
-        analyze(target_filenames, base=base, head=head)
+        analyze(target_filenames, base=base, head=head, console=console)
         sys.exit(0)
     except Exception as e:
         logger.error(
