@@ -138,7 +138,9 @@ def get_files_to_zip(
 
         all_filenames = tracked_filenames + untracked_target_filenames
         # `git ls-files` can include submodules (which are directories), we filter them out
-        all_filenames = list(filter(lambda fname: (git_root / fname).is_file(), all_filenames))
+        all_filenames = list(
+            filter(lambda fname: (git_root / fname).is_file(), all_filenames)
+        )
 
         # Export files at base commit
         for filename in all_filenames:
