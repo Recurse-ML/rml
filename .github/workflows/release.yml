@@ -22,10 +22,9 @@ jobs:
         with:
           python-version: '3.13'
 
-      # - name: Install Package
-      #   run: |
-      #     pip install uv
-      #     uv sync --locked
+      - name: Install Package
+        run: |
+          pip install uv
 
       - name: Check Version
         run: |
