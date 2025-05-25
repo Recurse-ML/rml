@@ -1,29 +1,69 @@
-name: Test Installation
+name: Install Tests
 
 on:
-  workflow_dispatch: # This workflow must be triggered manually
+  pull_request:
 
 jobs:
+  # Matrix items cannot access variable defined in an `env` section, but they can read outputs from other jobs.
+  set-env-vars:
+    name: Set Environment Variables
+    runs-on: ubuntu-latest
+    outputs:
+      darwin_os: darwin
+      arm64_arch: arm64
+      linux_os: linux
+      amd64_arch: amd64
+    steps:
+      - name: Set matrix variables
+        run: echo "Created env variables accessible by matrix"
+
   test-installation:
-    name: Test Installation
+    name: ${{ matrix.os }} ${{ matrix.arch }} (${{ matrix.shell }})
+    needs: set-env-vars
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          # Darwin (macOS) combinations - matching release workflow
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: macos-15
             shell: bash
-          - os: ubuntu-22.04
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: macos-15
             shell: zsh
-          - os: macos-13
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
+            runner: macos-13
             shell: bash
-          - os: macos-13
+          - os: ${{ needs.set-env-vars.outputs.darwin_os }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
+            runner: macos-13
+            shell: zsh
+          # Linux combinations - matching release workflow
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: ubuntu-24.04-arm
+            shell: bash
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.arm64_arch }}
+            runner: ubuntu-24.04-arm
+            shell: zsh
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
+            runner: ubuntu-latest
+            shell: bash
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
+            runner: ubuntu-latest
             shell: zsh
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     
     steps:
     - name: Install zsh (Ubuntu only)
-      if: startsWith(matrix.os, 'ubuntu') && matrix.shell == 'zsh'
+      if: startsWith(matrix.runner, 'ubuntu') && matrix.shell == 'zsh'
       run: |
         sudo apt-get update
         sudo apt-get install -y zsh
