@@ -305,7 +305,9 @@ def analyze(
 
 
 @click.command()
-@click.version_option(version=get_local_version(), message="🐞Running rml version %(version)s")
+@click.version_option(
+    version=get_local_version(), message="🐞Running rml version %(version)s"
+)
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option("--base", default="HEAD", help="Base commit to compare against")
 @click.option(
