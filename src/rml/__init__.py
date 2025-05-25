@@ -27,6 +27,13 @@ from rml.ui import Step, Workflow, render_comments
 client = Client(base_url=HOST)
 
 
+def installed_from_binary() -> bool:
+    # https://pyinstaller.org/en/stable/runtime-information.html#run-time-information
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return True
+    return False
+
+
 def get_local_version() -> str:
     return version("rml")
 
@@ -312,15 +319,19 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         local_version = get_local_version()
         remote_version = get_remote_version()
         if local_version != remote_version:
-            # TODO: If installed from source, don't force to update
-            if click.confirm(
-                f"rml is not up to date (local: {local_version}, latest: {remote_version}), run the install.sh script?",
-                default=False,
-            ):
-                (local["curl"][INSTALL_URL] | local["sh"]) & FG
+            if installed_from_binary():
+                logger.warning(
+                    f"rml is not up to date (local: {local_version}, latest: {remote_version}. Things might break."
+                )
             else:
-                click.echo("rml requires latest version to run, please update")
-                sys.exit(0)
+                if click.confirm(
+                    f"rml is not up to date (local: {local_version}, latest: {remote_version}), update to latest version?",
+                    default=False,
+                ):
+                    (local["curl"][INSTALL_URL] | local["sh"]) & FG
+                else:
+                    click.echo("rml requires latest version to run, please update")
+                    sys.exit(0)
 
     except Exception as e:
         logger.error(
