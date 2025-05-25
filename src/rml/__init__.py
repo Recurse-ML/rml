@@ -324,14 +324,15 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
                     f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything runs smoothly."
                 )
             else:
-                if click.confirm(
-                    f"rml is not up to date (local: {local_version}, latest: {remote_version}), update to latest version?",
-                    default=True,
-                ):
+                try:
                     (local["curl"][INSTALL_URL] | local["sh"]) & FG
-                else:
-                    click.echo("rml requires latest version to run, please update")
-                    sys.exit(0)
+                except Exception as e:
+                    logger.error(f"Failed to update rml: {e}")
+                    click.echo(
+                        "rml requires latest version to run. Please update manually with:"
+                    )
+                    click.echo(f"curl {INSTALL_URL} | sh")
+                    sys.exit(1)
 
     except Exception as e:
         logger.error(
