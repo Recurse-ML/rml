@@ -323,7 +323,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         if local_version != remote_version:
             if installed_from_binary():
                 logger.warning(
-                    f"rml is not up to date (local: {local_version}, latest: {remote_version}. Things might break."
+                    f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything works."
                 )
             else:
                 if click.confirm(
