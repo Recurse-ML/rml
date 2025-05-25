@@ -27,7 +27,11 @@ install:
 
 install-test:
 	uv sync --locked --extra test
+	make install-hooks
 
+install-hooks:
+	pre-commit install
+	pre-commit autoupdate
 
 unit-test: lint-check
 	pytest --durations=10 tests/unit/
