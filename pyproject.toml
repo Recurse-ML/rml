@@ -1,6 +1,6 @@
 [project]
 name = "rml"
-version = "0.1.3"
+version = "0.1.4"
 description = "CLI for Recurse ML"
 readme = "README.md"
 authors = [
@@ -25,6 +25,9 @@ test = [
   "ruff >= 0.9",
 ]
 
+dev = [
+  "pre-commit",
+]
 
 [tool.ruff]
 include = ["src/**/*.py", "cli/**/*.py", "tests/**/*.py"]
