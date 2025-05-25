@@ -1,4 +1,4 @@
-name: Test Installation
+name: Install Tests
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ jobs:
         run: echo "Created env variables accessible by matrix"
 
   test-installation:
-    name: Test Installation ${{ matrix.os }} ${{ matrix.arch }} (${{ matrix.shell }})
+    name: ${{ matrix.os }} ${{ matrix.arch }} (${{ matrix.shell }})
     needs: set-env-vars
     strategy:
       fail-fast: false
