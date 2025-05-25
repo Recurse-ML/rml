@@ -325,7 +325,9 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
                 )
             else:
                 try:
+                    logger.info("Updating rml to latest version...")
                     (local["curl"][INSTALL_URL] | local["sh"]) & FG
+                    logger.info("rml updated to latest version.")
                 except Exception as e:
                     logger.error(f"Failed to update rml: {e}")
                     click.echo(
