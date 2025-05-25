@@ -326,7 +326,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
             else:
                 if click.confirm(
                     f"rml is not up to date (local: {local_version}, latest: {remote_version}), update to latest version?",
-                    default=False,
+                    default=True,
                 ):
                     (local["curl"][INSTALL_URL] | local["sh"]) & FG
                 else:
