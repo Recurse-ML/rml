@@ -19,7 +19,6 @@ from rml.datatypes import APICommentResponse
 from rml.package_config import (
     HOST,
     INSTALL_URL,
-    PACKAGE_NAME,
     VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
@@ -29,7 +28,7 @@ client = Client(base_url=HOST)
 
 
 def get_local_version() -> str:
-    return version(PACKAGE_NAME)
+    return version("rml")
 
 
 def get_remote_version() -> str:

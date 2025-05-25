@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 
-PACKAGE_NAME = "rml"
-
 _current_dir = Path(__file__).parent
 PROJECT_ROOT = (_current_dir / "../../").resolve()
 INSTALL_URL = "https://install.recurse.ml"
