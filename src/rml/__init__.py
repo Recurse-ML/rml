@@ -253,15 +253,10 @@ def check_analysis_results(check_id: str, **kwargs):
     return dict(check_status=check_status, comments=comments)
 
 
-def analyze(target_filenames: list[str], base: str, head: str) -> None:
+def analyze(
+    target_filenames: list[str], base: str, head: str, console: Console
+) -> None:
     """Checks for bugs in target_filenames."""
-    console = Console()
-    handler = RichHandler(
-        console=console,
-        show_time=False,
-    )
-    logger.addHandler(handler)
-
     if len(target_filenames) == 0:
         logger.warning("No target file, no bugs!")
         return
@@ -315,6 +310,13 @@ def analyze(target_filenames: list[str], base: str, head: str) -> None:
     help="Head commit to analyze. If None analyzes uncommited changes.",
 )
 def main(target_filenames: list[str], base: str, head: str) -> None:
+    console = Console()
+    handler = RichHandler(
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
     try:
         local_version = get_local_version()
         remote_version = get_remote_version()
@@ -340,7 +342,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         sys.exit(1)
 
     try:
-        analyze(target_filenames, base=base, head=head)
+        analyze(target_filenames, base=base, head=head, console=console)
         sys.exit(0)
     except Exception as e:
         logger.error(
