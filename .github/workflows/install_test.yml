@@ -12,7 +12,7 @@ jobs:
       darwin_os: darwin
       arm64_arch: arm64
       linux_os: linux
-      x86_64_arch: x86_64
+      amd64_arch: amd64
     steps:
       - name: Set matrix variables
         run: echo "Created env variables accessible by matrix"
@@ -34,11 +34,11 @@ jobs:
             runner: macos-15
             shell: zsh
           - os: ${{ needs.set-env-vars.outputs.darwin_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: macos-13
             shell: bash
           - os: ${{ needs.set-env-vars.outputs.darwin_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: macos-13
             shell: zsh
           # Linux combinations - matching release workflow
@@ -51,11 +51,11 @@ jobs:
             runner: ubuntu-24.04-arm
             shell: zsh
           - os: ${{ needs.set-env-vars.outputs.linux_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: ubuntu-latest
             shell: bash
           - os: ${{ needs.set-env-vars.outputs.linux_os }}
-            arch: ${{ needs.set-env-vars.outputs.x86_64_arch }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: ubuntu-latest
             shell: zsh
 
