@@ -27,7 +27,7 @@ jobs:
           echo "version: $version"
           echo "release tag: ${{ github.event.release.tag_name }}"
           if [ "$version" != "${{ github.event.release.tag_name }}" ]; then
-            echo "❌ Version mismatch: pyproject.toml version does not match release tag. Please update with 'uv version ${{ github.event.release.tag_name }}' and commit the changes."
+            echo "❌ Version mismatch: pyproject.toml version does not match release tag. Please run 'make bump-version version=${{ github.event.release.tag_name }}' and commit the changes."
             exit 1
           else
             echo "✅ Version matches release tag."

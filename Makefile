@@ -32,3 +32,5 @@ install-test:
 unit-test: lint-check
 	pytest --durations=10 tests/unit/
 	
+bump-version:
+	uv version $(version) && uv sync
