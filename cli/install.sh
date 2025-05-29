@@ -132,7 +132,7 @@ detect_shell_config() {
 echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
 echo "Check files for bugs using \"rml <target filename>\" from within your repo\n"
 
-if ! rml --help &> /dev/null; then
+if ! rml --help; then
     if [ -n "$SHELL" ]; then
         SHELL_CONFIG=$(detect_shell_config)
         echo "WARNING: To use rml from anywhere, run this command to add PATH to your shell config file ($SHELL_CONFIG):"
