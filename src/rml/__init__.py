@@ -304,16 +304,32 @@ def analyze(
     console.print(summary_text)
 
 
-@click.command()
+@click.command(
+    help="""Find bugs in code. Analyzes changes between two git states for bugs.
+
+By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
+
+Examples:\n
+  rml file.py                             # Analyze uncommitted changes\n
+  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml file.py --from main --to feature    # Compare commits
+"""
+)
 @click.version_option(
     version=get_local_version(), message="🐞Running rml version %(version)s"
 )
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
-@click.option("--base", default="HEAD", help="Base commit to compare against")
 @click.option(
-    "--head",
+    "--from",
+    "base",
+    default="HEAD",
+    help="Git reference to compare FROM (older state). Default: HEAD",
+)
+@click.option(
+    "--to",
+    "head",
     default=None,
-    help="Head commit to analyze. If None analyzes uncommited changes.",
+    help="Git reference to compare TO (newer state). Default: working directory (uncommitted changes)",
 )
 def main(target_filenames: list[str], base: str, head: str) -> None:
     console = Console()
