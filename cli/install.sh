@@ -162,5 +162,4 @@ if ! rml --help &> /dev/null; then
     else
         echo "Add $BIN_DIR to your PATH environment variable to use rml from anywhere"
     fi
-    echo ""
 fi
