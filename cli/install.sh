@@ -130,7 +130,7 @@ detect_shell_config() {
 
 
 echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
-echo "Check files for bugs using \"rml <target filename>\" from within your repo\n"
+echo ""
 
 if ! rml --help; then
     if [ -n "$SHELL" ]; then
@@ -140,5 +140,18 @@ if ! rml --help; then
     else
         echo "WARNING: To use rml from anywhere, add $BIN_DIR to your PATH environment variable"
     fi
+else
+    echo ""
+    echo "██████╗ ███╗   ███╗██╗          /\\ /\\ /\\"
+    echo "██╔══██╗████╗ ████║██║         (  ●  ● )"
+    echo "██████╔╝██╔████╔██║██║          \\  ∩  /"
+    echo "██╔══██╗██║╚██╔╝██║██║           \\___/"
+    echo "██║  ██║██║ ╚═╝ ██║███████╗      |||||"
+    echo "╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     /|||||\\  "
+    echo "                               (_______)"
+    echo "                                ^  ^  ^"
+    echo ""
+    echo "🎉 RML is ready to hunt bugs! Happy coding! 🐛"
+    echo ""
 fi
 
