@@ -155,3 +155,7 @@ else
     echo ""
 fi
 
+echo "Quickstart:"
+echo "1. 🚀 Go to local project."
+echo "2. ✏️  Modify a file"
+echo "3. 🐛 Run rml"
