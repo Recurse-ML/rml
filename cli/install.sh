@@ -130,15 +130,36 @@ detect_shell_config() {
 
 
 echo "Successfully installed rml version $VERSION to $BIN_DIR/rml"
-echo "Check files for bugs using \"rml <target filename>\" from within your repo\n"
+echo ""
+
+echo "██████╗ ███╗   ███╗██╗          /\\ /\\ /\\"
+echo "██╔══██╗████╗ ████║██║         (  ●  ● )"
+echo "██████╔╝██╔████╔██║██║          \\  ∩  /"
+echo "██╔══██╗██║╚██╔╝██║██║           \\___/"
+echo "██║  ██║██║ ╚═╝ ██║███████╗      |||||"
+echo "╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     /|||||\\  "
+echo "                               (_______)"
+echo "                                ^  ^  ^"
+echo ""
+echo "🎉 RML is ready to hunt bugs! Happy coding! 🐛"
+echo ""
+
+echo "Quickstart:"
+echo "1. 🚀 Go to local project."
+echo "2. ✏️  Modify a file"
+echo "3. 🐛 Run rml to catch bugs (or rml --help for more options)"
+echo ""
 
 if ! rml --help &> /dev/null; then
+    echo "⚠️  SETUP REQUIRED:"
     if [ -n "$SHELL" ]; then
         SHELL_CONFIG=$(detect_shell_config)
-        echo "WARNING: To use rml from anywhere, run this command to add PATH to your shell config file ($SHELL_CONFIG):"
-        echo "echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> $SHELL_CONFIG"
+        echo "To use rml from anywhere, add it to your PATH by running:"
+        echo ""
+        echo "    echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> $SHELL_CONFIG"
+        echo ""
+        echo "Then restart your terminal or run: source $SHELL_CONFIG"
     else
-        echo "WARNING: To use rml from anywhere, add $BIN_DIR to your PATH environment variable"
+        echo "Add $BIN_DIR to your PATH environment variable to use rml from anywhere"
     fi
 fi
-

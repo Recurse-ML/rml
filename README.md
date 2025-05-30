@@ -27,13 +27,13 @@ rml funky/src/file.js
 
 By default `rml` analyzes unstaged changes (i.e. the ones displayed by `git diff` without any arguments).
 
-You can also specify the changes to compare against, by specifying `--base` and/or `--head` explicitly (they accept arbitrary git refs):
+You can also specify the changes to compare against, by specifying `--from` and/or `--to` explicitly (they accept arbitrary git refs):
 
 ```bash
-rml funky/src/file.js --base HEAD^
+rml funky/src/file.js --from HEAD^
 
 # or between branches
-rml funky/src/file.js --base HEAD --head feat/chameleon
+rml funky/src/file.js --to HEAD --head feat/chameleon
 ```
 
 # Contributing

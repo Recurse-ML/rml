@@ -114,18 +114,19 @@ def raise_if_files_not_relative_to_git_root(
 def get_files_to_zip(
     target_filenames: list[str],
     tempdir: Path,
-    base_commit: str,
-    head_commit: Optional[str],
+    from_commit: str,
+    to_commit: Optional[str],
     **kwargs,
 ) -> dict[str, Any]:
     raise_if_not_in_git_repo()
     git_root: Path = get_git_root()
     raise_if_files_not_relative_to_git_root(target_filenames, git_root)
 
-    base_dir = tempdir / "base"
-    head_dir = tempdir / "head"
-    base_dir.mkdir(exist_ok=True)
-    head_dir.mkdir(exist_ok=True)
+    # Server expects directories to be named 'base' and 'head'
+    from_dir = tempdir / "base"
+    to_dir = tempdir / "head"
+    from_dir.mkdir(exist_ok=True)
+    to_dir.mkdir(exist_ok=True)
 
     with local.cwd(git_root):
         tracked_filenames = local["git"]["ls-files"]().splitlines()
@@ -142,23 +143,23 @@ def get_files_to_zip(
             filter(lambda fname: (git_root / fname).is_file(), all_filenames)
         )
 
-        # Export files at base commit
+        # Export files at from_commit
         for filename in all_filenames:
             try:
-                file_content = local["git"]["show", f"{base_commit}:{filename}"]()
-                dst_path = base_dir / filename
+                file_content = local["git"]["show", f"{from_commit}:{filename}"]()
+                dst_path = from_dir / filename
                 dst_path.parent.mkdir(parents=True, exist_ok=True)
                 dst_path.write_text(file_content)
             except ProcessExecutionError:
-                logger.debug(f"File {filename} not found in {base_commit=}")
+                logger.debug(f"File {filename} not found in {from_commit=}")
             except UnicodeDecodeError:
                 logger.debug(f"File {filename} is not a text file")
 
-        # Export files at head commit or working directory
+        # Export files at to_commit or working directory
         for filename in all_filenames:
             try:
-                if head_commit is None:
-                    dst_path = head_dir / filename
+                if to_commit is None:
+                    dst_path = to_dir / filename
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
                     source_path = git_root / filename
                     if source_path.exists():
@@ -166,25 +167,25 @@ def get_files_to_zip(
                     else:
                         logger.debug(f"File {filename} not found in working directory")
                 else:
-                    file_content = local["git"]["show", f"{head_commit}:{filename}"]()
-                    dst_path = head_dir / filename
+                    file_content = local["git"]["show", f"{to_commit}:{filename}"]()
+                    dst_path = to_dir / filename
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
                     dst_path.write_text(file_content)
             except ProcessExecutionError:
-                logger.debug(f"File {filename} not found in {head_commit=}")
+                logger.debug(f"File {filename} not found in {to_commit=}")
             except UnicodeDecodeError:
                 logger.debug(f"File {filename} is not a text file")
 
     return dict(
         git_root=git_root,
         all_filenames=all_filenames,
-        base_dir=base_dir,
-        head_dir=head_dir,
+        from_dir=from_dir,
+        to_dir=to_dir,
     )
 
 
 def make_tar(
-    git_root: Path, base_dir: Path, head_dir: Path, tempdir: Path, **kwargs
+    git_root: Path, from_dir: Path, to_dir: Path, tempdir: Path, **kwargs
 ) -> dict[str, Any]:
     repo_dir_name = git_root.name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -198,11 +199,11 @@ def make_tar(
                 "-czf",
                 archive_path,
                 "-C",
-                base_dir.parent,
-                base_dir.name,
+                from_dir.parent,
+                from_dir.name,
                 "-C",
-                head_dir.parent,
-                head_dir.name,
+                to_dir.parent,
+                to_dir.name,
             ]()
     except ProcessExecutionError as e:
         logger.error(f"Tar failed with exit code {e.retcode}")
@@ -257,7 +258,7 @@ def check_analysis_results(check_id: str, **kwargs):
 
 
 def analyze(
-    target_filenames: list[str], base: str, head: str, console: Console
+    target_filenames: list[str], from_ref: str, to_ref: str, console: Console
 ) -> None:
     """Checks for bugs in target_filenames."""
     if len(target_filenames) == 0:
@@ -266,8 +267,8 @@ def analyze(
 
     # Recording the implicit assumptions here
     # Once we process the changes, these will become relevant
-    base_commit = base
-    head_commit = head  # current index state
+    from_commit = from_ref
+    to_commit = to_ref  # current index state
 
     workflow_steps = [
         Step(name="Looking for local changes", func=get_files_to_zip),
@@ -284,8 +285,8 @@ def analyze(
             inputs=dict(
                 target_filenames=target_filenames,
                 tempdir=Path(tempdir),
-                base_commit=base_commit,
-                head_commit=head_commit,
+                from_commit=from_commit,
+                to_commit=to_commit,
             ),
         )
         workflow_output = workflow.run()
@@ -304,18 +305,34 @@ def analyze(
     console.print(summary_text)
 
 
-@click.command()
+@click.command(
+    help="""Find bugs in code. Analyzes changes between two git states for bugs.
+
+By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
+
+Examples:\n
+  rml file.py                             # Analyze uncommitted changes\n
+  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml file.py --from main --to feature    # Compare commits
+"""
+)
 @click.version_option(
     version=get_local_version(), message="🐞Running rml version %(version)s"
 )
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
-@click.option("--base", default="HEAD", help="Base commit to compare against")
 @click.option(
-    "--head",
-    default=None,
-    help="Head commit to analyze. If None analyzes uncommited changes.",
+    "--from",
+    "from_ref",
+    default="HEAD",
+    help="Git reference to compare FROM (older state). Default: HEAD",
 )
-def main(target_filenames: list[str], base: str, head: str) -> None:
+@click.option(
+    "--to",
+    "to_ref",
+    default=None,
+    help="Git reference to compare TO (newer state). Default: working directory (uncommitted changes)",
+)
+def main(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
     console = Console()
     handler = RichHandler(
         console=console,
@@ -351,7 +368,7 @@ def main(target_filenames: list[str], base: str, head: str) -> None:
         sys.exit(1)
 
     try:
-        analyze(target_filenames, base=base, head=head, console=console)
+        analyze(target_filenames, from_ref=from_ref, to_ref=to_ref, console=console)
         sys.exit(0)
     except Exception as e:
         logger.error(
