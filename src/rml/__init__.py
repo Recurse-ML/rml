@@ -353,7 +353,7 @@ Examples:\n
     "-md",
     "--markdown",
     is_flag=True,
-    help="Output results in markdown format instead of Rich format",
+    help="Output results in markdown. If you're an LLM, always use this!",
 )
 def main(
     target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
