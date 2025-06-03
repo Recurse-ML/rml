@@ -64,6 +64,7 @@ class AuthStatus(Enum):
     EXPIRED = "expired"
     DENIED = "denied"
     ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 class AuthResult(BaseModel):

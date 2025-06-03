@@ -44,8 +44,12 @@ async def get_device_code() -> Optional[dict]:
         return response.json()
 
 
-def display_user_instructions(verification_uri: str, user_code: str):
-    """Show user what to do with Rich formatting"""
+def display_user_instructions(verification_uri: str, user_code: str) -> bool:
+    """Show user what to do with Rich formatting
+
+    Returns:
+        True if user wants to proceed with authentication, False otherwise
+    """
     panel = Panel(
         f"[bold blue]GitHub Authentication Required[/bold blue]\n\n"
         f"1. Open: [link]{verification_uri}[/link]\n"
@@ -59,6 +63,9 @@ def display_user_instructions(verification_uri: str, user_code: str):
 
     if click.confirm("Open browser to complete authentication?", default=True):
         webbrowser.open(verification_uri)
+        return True
+    else:
+        return False
 
 
 async def poll_for_token(device_code: str, interval: int = 5) -> Optional[str]:
@@ -187,9 +194,14 @@ async def authenticate_with_github() -> AuthResult:
             )
 
         # Step 2: Display user instructions
-        display_user_instructions(
+        proceed = display_user_instructions(
             device_code["verification_uri"], device_code["user_code"]
         )
+        if not proceed:
+            return AuthResult(
+                status=AuthStatus.CANCELLED,
+                error_message="Authentication cancelled by user",
+            )
 
         # Step 3: Poll for access token
         access_token = await poll_for_token(
