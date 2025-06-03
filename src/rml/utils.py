@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional
 
 from rml.datatypes import APICommentResponse, Diff, DiffLine, Operator
-from rml.package_logger import logger
 
 DIFF_HEADER_PTRN = re.compile(
     r"@@\s-(?P<old_start>\d+)(?:,(?P<old_len>\d+))?\s+\+(?P<new_start>\d+)(?:,(?P<new_len>\d+))?\s@@"
@@ -210,17 +209,8 @@ def enrich_bc_ref_locations_with_source(comment: APICommentResponse) -> Optional
                 .read_text()
                 .splitlines()[ref_location.line_no - 1]
             )
-        except (FileNotFoundError, PermissionError):
-            logger.warning(
-                f"Failed to read reference location at {ref_location.relative_path}:{ref_location.line_no}",
-                exc_info=True,
-            )
-            continue
-        except IndexError:
-            logger.warning(
-                f"Reference location at {ref_location.relative_path}:{ref_location.line_no} is out of bounds",
-                exc_info=True,
-            )
+        except (FileNotFoundError, PermissionError, IndexError):
+            # Reference location is not found, so we skip it
             continue
 
         ref_location_language = get_language_from_path(Path(ref_location.relative_path))
