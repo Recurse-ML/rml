@@ -215,9 +215,9 @@ async def authenticate_with_github() -> AuthResult:
         # Step 4: Send to backend
         backend_success = await send_to_backend(access_token)
         if not backend_success:
-            console.print(
-                "[yellow]Warning: Could not sync with backend, but authentication successful[/yellow]"
-            )
+            error_msg = "Failed to sync with backend - authentication failed"
+            console.print(f"[bold red]❌ {error_msg}[/bold red]")
+            return AuthResult(status=AuthStatus.ERROR, error_message=error_msg)
 
         # Step 5: Store locally
         store_token_locally(access_token)
