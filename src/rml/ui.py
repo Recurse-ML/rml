@@ -350,11 +350,6 @@ def render_comments_markdown(comments: list[APICommentResponse]) -> None:
     Renders comments in markdown format instead of Rich format.
     Groups comments by file and outputs them as markdown.
     """
-    from collections import defaultdict
-
-    from rml.utils import (
-        enrich_bc_ref_locations_with_source,
-    )
 
     path_comment_map = defaultdict(list)
 
@@ -378,10 +373,8 @@ def render_comments_markdown(comments: list[APICommentResponse]) -> None:
             if comment.reference_locations is not None:
                 # For breaking changes, use enriched markdown
                 enriched_body = enrich_bc_ref_locations_with_source(comment)
-                if enriched_body:
+                if enriched_body is not None:
                     print(enriched_body)
-                else:
-                    print(comment.body)
             else:
                 # For regular comments, just print the body
                 print(comment.body)
