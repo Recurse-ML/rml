@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import time
 from datetime import datetime
@@ -15,7 +16,13 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
-from rml.datatypes import APICommentResponse
+from rml.auth import (
+    authenticate_with_github,
+    clear_stored_token,
+    is_authenticated,
+    require_auth,
+)
+from rml.datatypes import APICommentResponse, AuthStatus
 from rml.package_config import (
     HOST,
     INSTALL_URL,
@@ -305,19 +312,55 @@ def analyze(
     console.print(summary_text)
 
 
-@click.command(
+@click.group()
+@click.version_option(
+    version=get_local_version(), message="🐞Running rml version %(version)s"
+)
+def cli():
+    """Find bugs in code. Analyzes changes between two git states for bugs."""
+    pass
+
+
+@cli.group()
+def auth():
+    """Authentication commands"""
+    pass
+
+
+@auth.command()
+def login():
+    """Authenticate with GitHub"""
+    result = asyncio.run(authenticate_with_github())
+    if result.status != AuthStatus.SUCCESS:
+        raise click.Abort()
+
+
+@auth.command()
+def logout():
+    """Clear authentication credentials"""
+    clear_stored_token()
+    click.echo("✅ Logged out successfully")
+
+
+@auth.command()
+def status():
+    """Show authentication status"""
+    if is_authenticated():
+        click.echo("✅ Authenticated")
+    else:
+        click.echo("❌ Not authenticated")
+
+
+@cli.command(
     help="""Find bugs in code. Analyzes changes between two git states for bugs.
 
 By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
 
 Examples:\n
-  rml file.py                             # Analyze uncommitted changes\n
-  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
-  rml file.py --from main --to feature    # Compare commits
+  rml analyze file.py                             # Analyze uncommitted changes\n
+  rml analyze file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml analyze file.py --from main --to feature    # Compare commits
 """
-)
-@click.version_option(
-    version=get_local_version(), message="🐞Running rml version %(version)s"
 )
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option(
@@ -332,7 +375,8 @@ Examples:\n
     default=None,
     help="Git reference to compare TO (newer state). Default: working directory (uncommitted changes)",
 )
-def main(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
+@require_auth
+def analyze_cmd(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
     console = Console()
     handler = RichHandler(
         console=console,
@@ -380,4 +424,4 @@ def main(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli()

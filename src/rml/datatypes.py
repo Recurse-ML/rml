@@ -56,3 +56,17 @@ class Diff(NamedTuple):
     old_len: int
     new_len: int
     changes: list[DiffLine]
+
+
+class AuthStatus(Enum):
+    SUCCESS = "success"
+    PENDING = "pending"
+    EXPIRED = "expired"
+    DENIED = "denied"
+    ERROR = "error"
+
+
+class AuthResult(BaseModel):
+    status: AuthStatus
+    access_token: Optional[str] = None
+    error_message: Optional[str] = None
