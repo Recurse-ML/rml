@@ -125,7 +125,7 @@ def make_comment_syntax(lines: list[str]) -> Syntax:
     return Syntax(
         "".join(lines),
         "diff",
-        theme="ansi_dark",
+        background_color="default",
     )
 
 
@@ -156,7 +156,7 @@ def render_breaking_change(
     return Panel(
         panel_content,
         title=f"{comment.relative_path}:{comment.line_no}",
-        style=Style(bold=True, bgcolor="black"),
+        style=Style(bold=True),
     )
 
 
@@ -176,7 +176,7 @@ def render_regular_comment(
     return Panel(
         panel_content,
         title=f"{comment.relative_path}:{comment.line_no}",
-        style=Style(bold=True, bgcolor="black"),
+        style=Style(bold=True),
     )
 
 
@@ -279,9 +279,6 @@ def create_comment_diff(
         diff_syntax = make_comment_syntax(lines=full_diff_lines)
         diff_panel = Panel(
             diff_syntax,
-            style=Style(
-                bgcolor="#1c1c1c"
-            ),  # Using 'black' here doesn't work for some reason
             border_style="dim",  # dim border for better readability
             padding=(0, 1),  # Horizontal padding for better readability
         )
