@@ -388,7 +388,7 @@ def render_comments_markdown(comments: list[APICommentResponse]) -> None:
 
             # Add documentation URL if available
             if comment.documentation_url:
-                print(f"\n📚 [Documentation]({comment.documentation_url})")
+                print(f"\n📚 Documentation: {comment.documentation_url}")
 
             # Add separator between issues (except for the last one)
             if i < len(file_comments) - 1:
