@@ -186,6 +186,18 @@ def is_authenticated() -> bool:
 async def authenticate_with_github() -> AuthResult:
     """Main authentication flow with OAuth Device Flow (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)"""
     try:
+        existing_token = get_stored_token()
+        if existing_token:
+            console.print("[yellow]⚠️  You already have stored credentials.[/yellow]")
+            if not click.confirm(
+                "Proceeding will overwrite your existing credentials. Continue?",
+                default=False,
+            ):
+                return AuthResult(
+                    status=AuthStatus.CANCELLED,
+                    error_message="Authentication cancelled - existing credentials preserved",
+                )
+
         # Step 1: Get device code
         device_code = await get_device_code()
         if not device_code:
