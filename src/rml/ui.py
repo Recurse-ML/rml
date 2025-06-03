@@ -73,6 +73,7 @@ class Workflow:
         steps: list[Step],
         console: Console,
         logger: Logger,
+        markdown_mode: bool = False,
         inputs: dict = {},
     ):
         """
@@ -82,11 +83,13 @@ class Workflow:
         Args:
             steps: dict of step_id -> (step name, executor function)
             inputs: any kwargs to pass to each executor
+            markdown_mode: if True, use plain text output instead of Rich formatting
         """
         self.steps = steps
         self.inputs = inputs
         self.console = console
         self.logger = logger
+        self.markdown_mode = markdown_mode
 
     def render(self):
         table = Table.grid(padding=(0, 1))
@@ -95,6 +98,12 @@ class Workflow:
         return Panel(table, title="Workflow", border_style="cyan")
 
     def run(self) -> dict[str, Any]:
+        if self.markdown_mode:
+            return self._run_markdown_mode()
+        else:
+            return self._run_rich_mode()
+
+    def _run_rich_mode(self) -> dict[str, Any]:
         with Live(self.render(), console=self.console, refresh_per_second=10) as live:
             prev_output = {}
             for step in self.steps:
@@ -118,6 +127,26 @@ class Workflow:
 
         self.console.clear()
         self.console.print("[bold green]✅ Analysis finished.[/]")
+        return prev_output
+
+    def _run_markdown_mode(self) -> dict[str, Any]:
+        prev_output = {}
+        for i, step in enumerate(self.steps, 1):
+            print(f"[{i}/{len(self.steps)}] {step.name}...")
+
+            try:
+                # Merge previous outputs and global args
+                kwargs = {**prev_output, **self.inputs}
+                result = step.func(**kwargs)
+                step.output = result or {}
+                prev_output = step.output
+                print(f"[{i}/{len(self.steps)}] {step.name} ✓")
+            except Exception as e:
+                print(f"[{i}/{len(self.steps)}] {step.name} ✗")
+                self.logger.error(f"Step '{step.name}' failed")
+                raise e
+
+        print("Analysis finished.")
         return prev_output
 
 
@@ -314,3 +343,112 @@ def render_comments(
         file_panel = Panel(file_group, title=f"[bold white on blue] {rel_path} [/]")
 
         console.print(file_panel)
+
+
+def render_comments_markdown(comments: list[APICommentResponse]) -> None:
+    """
+    Renders comments in markdown format instead of Rich format.
+    Groups comments by file and outputs them as markdown.
+    """
+    from collections import defaultdict
+
+    from rml.utils import (
+        enrich_bc_ref_locations_with_source,
+    )
+
+    path_comment_map = defaultdict(list)
+
+    for comment in comments:
+        path_comment_map[comment.relative_path].append(comment)
+
+    for rel_path, file_comments in path_comment_map.items():
+        file_comments = sorted(file_comments, key=lambda x: x.line_no)
+
+        print(f"\n## {rel_path}\n")
+
+        for i, comment in enumerate(file_comments):
+            print(f"### Issue {i + 1} (Line {comment.line_no})")
+
+            # Add diff context
+            diff_markdown = create_comment_diff_markdown(comment)
+            if diff_markdown:
+                print(diff_markdown)
+
+            # Add comment body
+            if comment.reference_locations is not None:
+                # For breaking changes, use enriched markdown
+                enriched_body = enrich_bc_ref_locations_with_source(comment)
+                if enriched_body:
+                    print(enriched_body)
+                else:
+                    print(comment.body)
+            else:
+                # For regular comments, just print the body
+                print(comment.body)
+
+            # Add documentation URL if available
+            if comment.documentation_url:
+                print(f"\n📚 [Documentation]({comment.documentation_url})")
+
+            # Add separator between issues (except for the last one)
+            if i < len(file_comments) - 1:
+                print("\n---\n")
+
+
+def create_comment_diff_markdown(
+    comment: APICommentResponse, context_window: int = 3
+) -> str:
+    """
+    Creates a markdown representation of the diff for a comment.
+    """
+    git_diff = comment.diff_str
+    parsed_output = parse_diff_str_multi_hunk(git_diff)
+
+    diffs_with_comment = []
+
+    for diff in parsed_output:
+        diff_new_start_line_no = diff.new_start_line_idx + 1
+        diff_new_end_line_no = diff_new_start_line_no + diff.new_len
+        if diff_new_start_line_no <= comment.line_no < diff_new_end_line_no:
+            diffs_with_comment.append(diff)
+
+    if len(diffs_with_comment) == 0:
+        return ""
+
+    if len(diffs_with_comment) > 1:
+        return ""
+
+    diff = diffs_with_comment[0]
+    diff_header = make_diff_header(diff)
+    diff_str_lines_before_comment = []
+    diff_str_lines_after_comment = []
+
+    curr_old_line = diff.old_start_line_idx + 1
+    curr_new_line = diff.new_start_line_idx + 1
+
+    for change in diff.changes:
+        if curr_new_line <= comment.line_no:
+            diff_str_lines_before_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
+        else:
+            diff_str_lines_after_comment.append(
+                f"{change.operator.value}{change.content}"
+            )
+
+        if change.old_line_idx is not None:
+            curr_old_line += 1
+        if change.new_line_idx is not None:
+            curr_new_line += 1
+
+    if diff_str_lines_before_comment or diff_str_lines_after_comment:
+        full_diff_lines = [diff_header]
+        if diff_str_lines_before_comment:
+            full_diff_lines.extend(diff_str_lines_before_comment[-context_window:])
+        if diff_str_lines_after_comment:
+            full_diff_lines.extend(diff_str_lines_after_comment[:context_window])
+
+        diff_content = "".join(full_diff_lines)
+        return f"```diff\n{diff_content}```\n"
+
+    return ""
