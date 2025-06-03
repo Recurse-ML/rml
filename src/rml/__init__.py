@@ -324,12 +324,14 @@ Examples:\n
     "--from",
     "from_ref",
     default="HEAD",
+    metavar="GIT_REF",
     help="Git reference to compare FROM (older state). Default: HEAD",
 )
 @click.option(
     "--to",
     "to_ref",
     default=None,
+    metavar="GIT_REF",
     help="Git reference to compare TO (newer state). Default: working directory (uncommitted changes)",
 )
 def main(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
