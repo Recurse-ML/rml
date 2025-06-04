@@ -94,24 +94,24 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentRespon
         access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
         user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
 
-        headers = {}
-        data = {}
-
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
-        if user_id:
-            data["user_id"] = user_id
-
         response = client.get(
-            f"/api/check/{check_id}/", headers=headers, params=data if data else None
+            f"/api/check/{check_id}/",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"user_id": user_id},
         )
         response.raise_for_status()
         response_body = response.json()
         logger.debug(response_body)
+
         comments = response_body.get("comments", None)
         if comments is not None:
             comments = list(map(APICommentResponse.model_validate, comments))
+
         return (response_body["status"], comments)
+
+    except HTTPStatusError as e:
+        raise e
+
     except pydantic.ValidationError as e:
         logger.error(
             "Failed to validate APICommentResponse model received from the server"
@@ -253,51 +253,23 @@ def post_check(
         access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
         user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
 
-        headers = {}
-        data = {"target_filenames": target_filenames}
-
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
-        if user_id:
-            data["user_id"] = user_id
-
         post_response = client.post(
             "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
-            data=data,
-            headers=headers,
+            data={"target_filenames": target_filenames, "user_id": user_id},
+            headers={"Authorization": f"Bearer {access_token}"},
             timeout=None,
         )
-
         post_response.raise_for_status()
 
         return dict(check_id=post_response.json()["check_id"])
+
     except HTTPStatusError as e:
-        if e.response.status_code == 402:
-            # Payment required - user needs a subscription plan
-            console = Console()
-            console.print()
-            panel = Panel(
-                "[bold yellow]Subscription Required[/bold yellow]\n\n"
-                "To analyze your code with rml, you need an active subscription.\n"
-                "Please purchase a plan to continue.\n\n"
-                "[link]https://github.com/marketplace/recurse-ml[/link]",
-                title="💳 Plan Needed",
-                border_style="yellow",
-            )
-            console.print(panel)
+        logger.error(
+            f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
+        )
+        raise e
 
-            if click.confirm(
-                "Would you like to open the marketplace in your browser?", default=True
-            ):
-                webbrowser.open("https://github.com/marketplace/recurse-ml")
-
-            raise click.Abort()
-        else:
-            logger.error(
-                f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
-            )
-            raise e
     except RequestError as e:
         logger.error("Error occured while POSTing data to Recurse server")
         raise e
@@ -472,11 +444,39 @@ def analyze_cmd(target_filenames: list[str], from_ref: str, to_ref: str) -> None
     try:
         analyze(target_filenames, from_ref=from_ref, to_ref=to_ref, console=console)
         sys.exit(0)
-    except Exception as e:
+    except HTTPStatusError as e:
+        if e.response.status_code == 402:
+            panel = Panel(
+                "[bold yellow]Subscription Required[/bold yellow]\n\n"
+                "To analyze your code with rml, you need an active subscription.\n"
+                "Please purchase a plan to continue.\n\n"
+                "[link]https://github.com/marketplace/recurse-ml[/link]",
+                title="💳 Plan Needed",
+                border_style="yellow",
+            )
+            console.print(panel)
+
+            if click.confirm(
+                "Would you like to open the marketplace in your browser?", default=True
+            ):
+                webbrowser.open("https://github.com/marketplace/recurse-ml")
+
+            sys.exit(1)
+        elif e.response.status_code == 401:
+            logger.error("❌ Authentication failed. Please run `rml auth login` again.")
+            sys.exit(1)
+        else:
+            logger.error(
+                f"\nHTTP error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            )
+            sys.exit(1)
+
+    except ValueError as e:
         logger.error(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
+
     finally:
         client.close()
 
