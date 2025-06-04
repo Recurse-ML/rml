@@ -127,17 +127,17 @@ async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
                     return None
 
 
-async def send_to_backend(access_token: str, user_id: str) -> bool:
+async def send_to_backend(access_token: str, user_id: int) -> bool:
     """Send auth data to FastAPI backend"""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{HOST}/api/v1/auth/github/store",
-                json={"user_id": user_id},
+                f"{HOST}/api/auth/verify",
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {access_token}",
                 },
+                data={"user_id": user_id},
             )
             return response.status_code == 200
     except Exception as e:
@@ -145,7 +145,7 @@ async def send_to_backend(access_token: str, user_id: str) -> bool:
         return False
 
 
-async def get_user_id(access_token: str) -> Optional[str]:
+async def get_user_id(access_token: str) -> Optional[int]:
     """Get user ID from GitHub using access token"""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
