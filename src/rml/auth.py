@@ -145,8 +145,11 @@ async def send_to_backend(access_token: str, user_id: str) -> bool:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"{HOST}/api/v1/auth/github/store",
-                json={"access_token": access_token, "user_id": user_id},
-                headers={"Content-Type": "application/json"},
+                json={"user_id": user_id},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {access_token}",
+                },
             )
             return response.status_code == 200
     except Exception as e:
