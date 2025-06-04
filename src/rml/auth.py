@@ -1,6 +1,5 @@
 import asyncio
 import time
-import webbrowser
 from functools import wraps
 from typing import Optional
 
@@ -46,31 +45,20 @@ async def get_device_code() -> Optional[dict]:
         return response.json()
 
 
-def display_user_instructions(verification_uri: str, user_code: str) -> bool:
-    """Show user what to do with Rich formatting
-
-    Returns:
-        True if user wants to proceed with authentication, False otherwise
-    """
+def display_user_instructions(verification_uri: str, user_code: str) -> None:
+    """Show user what to do with Rich formatting"""
     panel = Panel(
         f"[bold blue]GitHub Authentication Required[/bold blue]\n\n"
-        f"1. Open: [link]{verification_uri}[/link]\n"
-        f"2. Enter code: [bold green]{user_code}[/bold green]\n"
-        f"3. Complete authorization in your browser\n\n"
+        f"1. Open this link in your browser: [link]{verification_uri}[/link]\n"
+        f"2. Enter this code: [bold green]{user_code}[/bold green]\n"
         f"[dim]Waiting for authorization...[/dim]",
         title="🔐 Authentication",
         border_style="blue",
     )
     console.print(panel)
 
-    if click.confirm("Open browser to complete authentication?", default=True):
-        webbrowser.open(verification_uri)
-        return True
-    else:
-        return False
 
-
-async def poll_for_token(device_code: str, interval: int = 5) -> Optional[str]:
+async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
     """Poll GitHub until user completes authentication
 
     Args:
@@ -249,14 +237,9 @@ async def authenticate_with_github() -> AuthResult:
             )
 
         # Step 2: Display user instructions
-        proceed = display_user_instructions(
+        display_user_instructions(
             device_code["verification_uri"], device_code["user_code"]
         )
-        if not proceed:
-            return AuthResult(
-                status=AuthStatus.CANCELLED,
-                error_message="Authentication cancelled by user",
-            )
 
         # Step 3: Poll for access token
         access_token = await poll_for_token(
