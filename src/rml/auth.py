@@ -164,7 +164,7 @@ async def get_user_id(access_token: str) -> Optional[str]:
                 return None
 
             user_data = response.json()
-            return str(user_data.get("id"))
+            return user_data.get("id")
 
     except Exception as e:
         console.print(f"[yellow]Failed to get user ID: {e}[/yellow]")
