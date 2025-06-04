@@ -18,12 +18,14 @@ from rich.text import Text
 
 from rml.auth import (
     authenticate_with_github,
-    clear_stored_token,
+    clear_env_data,
     is_authenticated,
     require_auth,
 )
 from rml.datatypes import APICommentResponse, AuthStatus
 from rml.package_config import (
+    GITHUB_ACCESS_TOKEN_KEYNAME,
+    GITHUB_USER_ID_KEYNAME,
     HOST,
     INSTALL_URL,
     VERSION_CHECK_URL,
@@ -338,7 +340,7 @@ def login():
 @auth.command()
 def logout():
     """Clear authentication credentials"""
-    clear_stored_token()
+    clear_env_data([GITHUB_ACCESS_TOKEN_KEYNAME, GITHUB_USER_ID_KEYNAME])
     click.echo("✅ Logged out successfully")
 
 

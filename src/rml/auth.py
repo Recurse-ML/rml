@@ -18,6 +18,7 @@ from rml.datatypes import (
 from rml.package_config import (
     ENV_FILE_PATH,
     GITHUB_ACCESS_TOKEN_KEYNAME,
+    GITHUB_USER_ID_KEYNAME,
     HOST,
     OAUTH_APP_CLIENT_ID,
 )
@@ -179,27 +180,39 @@ async def get_user_id(access_token: str) -> Optional[str]:
         return None
 
 
-def store_token_locally(access_token: str):
-    """Store token in .env.rml file"""
+def store_env_data(data: dict[str, str]):
+    """Store key-value pairs in .env.rml file"""
     env_data = dotenv_values(ENV_FILE_PATH)
     env_data = {k: v or "" for k, v in env_data.items()}
-    env_data[GITHUB_ACCESS_TOKEN_KEYNAME] = access_token
+    env_data.update(data)
     ENV_FILE_PATH.write_text(
         "\n".join(f"{key}={value}" for key, value in env_data.items())
     )
 
 
-def get_stored_token() -> Optional[str]:
-    """Read token from .env.rml file"""
+def get_env_data() -> dict[str, str]:
+    """Read all data from .env.rml file"""
     env_data = dotenv_values(ENV_FILE_PATH)
-    return env_data.get(GITHUB_ACCESS_TOKEN_KEYNAME)
+    return {k: v or "" for k, v in env_data.items() if v}
 
 
-def clear_stored_token():
-    """Remove token from .env.rml file"""
+def get_env_value(key: str) -> Optional[str]:
+    """Read a specific value from .env.rml file"""
+    env_data = dotenv_values(ENV_FILE_PATH)
+    return env_data.get(key)
+
+
+def clear_env_data(keys: Optional[list[str]] = None):
+    """Remove specified keys from .env.rml file, or clear all if no keys specified"""
     env_data = dotenv_values(ENV_FILE_PATH)
     env_data = {k: v or "" for k, v in env_data.items()}
-    env_data.pop(GITHUB_ACCESS_TOKEN_KEYNAME, None)
+
+    if keys is None:
+        env_data.clear()
+    else:
+        for key in keys:
+            env_data.pop(key, None)
+
     ENV_FILE_PATH.write_text(
         "\n".join(f"{key}={value}" for key, value in env_data.items())
     )
@@ -207,13 +220,13 @@ def clear_stored_token():
 
 def is_authenticated() -> bool:
     """Check if user has a stored token"""
-    return get_stored_token() is not None
+    return get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME) is not None
 
 
 async def authenticate_with_github() -> AuthResult:
     """Main authentication flow with OAuth Device Flow (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)"""
     try:
-        existing_token = get_stored_token()
+        existing_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
         if existing_token:
             console.print("[yellow]⚠️  You already have stored credentials.[/yellow]")
             if not click.confirm(
@@ -266,7 +279,9 @@ async def authenticate_with_github() -> AuthResult:
             return AuthResult(status=AuthStatus.ERROR, error_message=error_msg)
 
         # Step 6: Store locally
-        store_token_locally(access_token)
+        store_env_data(
+            {GITHUB_ACCESS_TOKEN_KEYNAME: access_token, GITHUB_USER_ID_KEYNAME: user_id}
+        )
 
         console.print("[bold green]✅ Authentication successful![/bold green]")
         return AuthResult(status=AuthStatus.SUCCESS, access_token=access_token)
