@@ -133,10 +133,7 @@ async def send_to_backend(access_token: str, user_id: int) -> bool:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"{HOST}/api/auth/verify",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {access_token}",
-                },
+                headers={"Authorization": f"Bearer {access_token}"},
                 data={"user_id": user_id},
             )
             return response.status_code == 200
