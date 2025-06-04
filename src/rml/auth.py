@@ -281,7 +281,7 @@ def require_auth(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not is_authenticated():
-            click.echo("Authentication required. Running login flow...")
+            click.echo("Authentication required.")
             result = asyncio.run(authenticate_with_github())
             if result.status == AuthStatus.SUCCESS:
                 console.print("[bold green]✅ Authentication successful![/bold green]")
