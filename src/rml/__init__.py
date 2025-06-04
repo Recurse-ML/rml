@@ -21,6 +21,7 @@ from rich.text import Text
 from rml.auth import (
     authenticate_with_github,
     clear_env_data,
+    get_env_value,
     is_authenticated,
     require_auth,
 )
@@ -90,7 +91,20 @@ def should_retry_http_error(e: Exception) -> bool:
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     try:
-        response = client.get(f"/api/check/{check_id}/")
+        access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
+        user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+
+        headers = {}
+        data = {}
+
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        if user_id:
+            data["user_id"] = user_id
+
+        response = client.get(
+            f"/api/check/{check_id}/", headers=headers, params=data if data else None
+        )
         response.raise_for_status()
         response_body = response.json()
         logger.debug(response_body)
@@ -236,10 +250,22 @@ def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
     try:
+        access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
+        user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+
+        headers = {}
+        data = {"target_filenames": target_filenames}
+
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        if user_id:
+            data["user_id"] = user_id
+
         post_response = client.post(
             "/api/check/",
             files={"tar_file": (archive_filename, archive_path.open("rb"))},
-            data={"target_filenames": target_filenames},
+            data=data,
+            headers=headers,
             timeout=None,
         )
 
