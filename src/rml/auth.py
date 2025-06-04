@@ -138,19 +138,45 @@ async def poll_for_token(device_code: str, interval: int = 5) -> Optional[str]:
                     return None
 
 
-async def send_to_backend(access_token: str) -> bool:
+async def send_to_backend(access_token: str, user_id: str) -> bool:
     """Send auth data to FastAPI backend"""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"{HOST}/api/v1/auth/github/store",
-                json={"access_token": access_token},
+                json={"access_token": access_token, "user_id": user_id},
                 headers={"Content-Type": "application/json"},
             )
             return response.status_code == 200
     except Exception as e:
         console.print(f"[yellow]Backend communication failed: {e}[/yellow]")
         return False
+
+
+async def get_user_id(access_token: str) -> Optional[str]:
+    """Get user ID from GitHub using access token"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+            )
+
+            if response.status_code != 200:
+                console.print(
+                    f"[red]Failed to get user info: {response.status_code}[/red]"
+                )
+                return None
+
+            user_data = response.json()
+            return str(user_data.get("id"))
+
+    except Exception as e:
+        console.print(f"[yellow]Failed to get user ID: {e}[/yellow]")
+        return None
 
 
 def store_token_locally(access_token: str):
@@ -225,14 +251,21 @@ async def authenticate_with_github() -> AuthResult:
                 status=AuthStatus.ERROR, error_message="Failed to get access token"
             )
 
-        # Step 4: Send to backend
-        backend_success = await send_to_backend(access_token)
+        # Step 4: Get user ID from GitHub
+        user_id = await get_user_id(access_token)
+        if not user_id:
+            return AuthResult(
+                status=AuthStatus.ERROR, error_message="Failed to get user ID"
+            )
+
+        # Step 5: Send to backend
+        backend_success = await send_to_backend(access_token, user_id)
         if not backend_success:
             error_msg = "Failed to sync with backend - authentication failed"
             console.print(f"[bold red]❌ {error_msg}[/bold red]")
             return AuthResult(status=AuthStatus.ERROR, error_message=error_msg)
 
-        # Step 5: Store locally
+        # Step 6: Store locally
         store_token_locally(access_token)
 
         console.print("[bold green]✅ Authentication successful![/bold green]")
