@@ -60,14 +60,11 @@ class Diff(NamedTuple):
 
 class AuthStatus(Enum):
     SUCCESS = "success"
-    PENDING = "pending"
-    EXPIRED = "expired"
-    DENIED = "denied"
     ERROR = "error"
     CANCELLED = "cancelled"
+    PLAN_REQUIRED = "plan_required"
 
 
 class AuthResult(BaseModel):
     status: AuthStatus
-    access_token: Optional[str] = None
-    error_message: Optional[str] = None
+    message: Optional[str] = None

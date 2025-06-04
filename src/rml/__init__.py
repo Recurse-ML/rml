@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import time
+import webbrowser
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
@@ -14,6 +15,7 @@ from httpx import Client, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.panel import Panel
 from rich.text import Text
 
 from rml.auth import (
@@ -245,10 +247,31 @@ def post_check(
 
         return dict(check_id=post_response.json()["check_id"])
     except HTTPStatusError as e:
-        logger.error(
-            f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
-        )
-        raise e
+        if e.response.status_code == 402:
+            # Payment required - user needs a subscription plan
+            console = Console()
+            console.print()
+            panel = Panel(
+                "[bold yellow]Subscription Required[/bold yellow]\n\n"
+                "To analyze your code with rml, you need an active subscription.\n"
+                "Please purchase a plan to continue.\n\n"
+                "[link]https://github.com/marketplace/recurse-ml[/link]",
+                title="💳 Plan Needed",
+                border_style="yellow",
+            )
+            console.print(panel)
+
+            if click.confirm(
+                "Would you like to open the marketplace in your browser?", default=True
+            ):
+                webbrowser.open("https://github.com/marketplace/recurse-ml")
+
+            raise click.Abort()
+        else:
+            logger.error(
+                f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
+            )
+            raise e
     except RequestError as e:
         logger.error("Error occured while POSTing data to Recurse server")
         raise e
@@ -333,7 +356,14 @@ def auth():
 def login():
     """Authenticate with GitHub"""
     result = asyncio.run(authenticate_with_github())
-    if result.status != AuthStatus.SUCCESS:
+    if result.status == AuthStatus.SUCCESS:
+        click.echo("✅ Authentication successful")
+    elif result.status == AuthStatus.PLAN_REQUIRED:
+        click.echo(
+            "⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again."
+        )
+    else:
+        click.echo("❌ Authentication failed")
         raise click.Abort()
 
 

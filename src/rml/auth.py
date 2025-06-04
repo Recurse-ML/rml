@@ -4,8 +4,8 @@ from functools import wraps
 from typing import Optional
 
 import click
-import httpx
 from dotenv import dotenv_values
+from httpx import AsyncClient
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -27,7 +27,7 @@ console = Console()
 
 async def get_device_code() -> Optional[dict]:
     """Request device code from GitHub"""
-    async with httpx.AsyncClient() as client:
+    async with AsyncClient() as client:
         response = await client.post(
             "https://github.com/login/device/code",
             data={
@@ -77,7 +77,7 @@ async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
     ) as progress:
         task = progress.add_task("Waiting for GitHub authorization...", total=None)
 
-        async with httpx.AsyncClient() as client:
+        async with AsyncClient() as client:
             while True:
                 elapsed = int(time.time() - start_time)
                 progress.update(
@@ -130,13 +130,13 @@ async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
 async def send_to_backend(access_token: str, user_id: int) -> bool:
     """Send auth data to FastAPI backend"""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"{HOST}/api/auth/verify",
                 headers={"Authorization": f"Bearer {access_token}"},
                 data={"user_id": user_id},
             )
-            return response.status_code == 200
+            return response
     except Exception as e:
         console.print(f"[yellow]Backend communication failed: {e}[/yellow]")
         return False
@@ -145,7 +145,7 @@ async def send_to_backend(access_token: str, user_id: int) -> bool:
 async def get_user_id(access_token: str) -> Optional[int]:
     """Get user ID from GitHub using access token"""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with AsyncClient(timeout=10.0) as client:
             response = await client.get(
                 "https://api.github.com/user",
                 headers={
@@ -223,17 +223,17 @@ async def authenticate_with_github() -> AuthResult:
             ):
                 return AuthResult(
                     status=AuthStatus.CANCELLED,
-                    error_message="Authentication cancelled - existing credentials preserved",
+                    message="Authentication cancelled - existing credentials preserved",
                 )
 
         # Step 1: Get device code
         device_code = await get_device_code()
         if not device_code:
             return AuthResult(
-                status=AuthStatus.ERROR, error_message="Failed to get device code"
+                status=AuthStatus.ERROR, message="Failed to get device code"
             )
 
-        # Step 2: Display user instructions
+        # Step 2: User manually completes auth in browser
         display_user_instructions(
             device_code["verification_uri"], device_code["user_code"]
         )
@@ -244,35 +244,35 @@ async def authenticate_with_github() -> AuthResult:
         )
         if not access_token:
             return AuthResult(
-                status=AuthStatus.ERROR, error_message="Failed to get access token"
+                status=AuthStatus.ERROR, message="Failed to get access token"
             )
 
         # Step 4: Get user ID from GitHub
         user_id = await get_user_id(access_token)
         if not user_id:
-            return AuthResult(
-                status=AuthStatus.ERROR, error_message="Failed to get user ID"
-            )
+            return AuthResult(status=AuthStatus.ERROR, message="Failed to get user ID")
 
         # Step 5: Send to backend
-        backend_success = await send_to_backend(access_token, user_id)
-        if not backend_success:
-            error_msg = "Failed to sync with backend - authentication failed"
-            console.print(f"[bold red]❌ {error_msg}[/bold red]")
-            return AuthResult(status=AuthStatus.ERROR, error_message=error_msg)
+        backend_response = await send_to_backend(access_token, user_id)
+        if backend_response.status_code == 402:
+            return AuthResult(status=AuthStatus.PLAN_REQUIRED)
+
+        elif backend_response.status_code != 200:
+            return AuthResult(
+                status=AuthStatus.ERROR,
+                message="Failed to sync with backend",
+            )
 
         # Step 6: Store locally
         store_env_data(
             {GITHUB_ACCESS_TOKEN_KEYNAME: access_token, GITHUB_USER_ID_KEYNAME: user_id}
         )
 
-        console.print("[bold green]✅ Authentication successful![/bold green]")
-        return AuthResult(status=AuthStatus.SUCCESS, access_token=access_token)
+        return AuthResult(status=AuthStatus.SUCCESS)
 
     except Exception as e:
         error_msg = f"Authentication failed: {str(e)}"
-        console.print(f"[bold red]❌ {error_msg}[/bold red]")
-        return AuthResult(status=AuthStatus.ERROR, error_message=error_msg)
+        return AuthResult(status=AuthStatus.ERROR, message=error_msg)
 
 
 def require_auth(f):
@@ -283,8 +283,16 @@ def require_auth(f):
         if not is_authenticated():
             click.echo("Authentication required. Running login flow...")
             result = asyncio.run(authenticate_with_github())
-            if result.status != AuthStatus.SUCCESS:
-                click.echo("Authentication failed.", err=True)
+            if result.status == AuthStatus.SUCCESS:
+                console.print("[bold green]✅ Authentication successful![/bold green]")
+            elif result.status == AuthStatus.PLAN_REQUIRED:
+                console.print(
+                    "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
+                )
+            else:
+                console.print(
+                    f"[bold red]❌ Authentication failed ({result.message})[/bold red]"
+                )
                 raise click.Abort()
         return f(*args, **kwargs)
 
