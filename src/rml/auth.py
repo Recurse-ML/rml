@@ -33,7 +33,7 @@ async def get_device_code() -> Optional[dict]:
             "https://github.com/login/device/code",
             data={
                 "client_id": OAUTH_APP_CLIENT_ID,
-                "scope": "user",
+                "scope": "read:user",
             },
             headers={"Accept": "application/json"},
         )
