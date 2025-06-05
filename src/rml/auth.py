@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import time
 from functools import wraps
 from typing import Optional
 
@@ -8,7 +7,6 @@ import click
 from dotenv import dotenv_values
 from httpx import AsyncClient, Response
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from rml.datatypes import (
     AuthResult,
@@ -42,7 +40,7 @@ async def get_device_code() -> dict:
         return response.json()
 
 
-async def poll_for_token(device_code: str, console: Console, interval: int = 1) -> str:
+async def poll_for_token(device_code: str, interval: int = 1) -> str:
     """Poll GitHub until user completes authentication
 
     Args:
@@ -52,58 +50,44 @@ async def poll_for_token(device_code: str, console: Console, interval: int = 1) 
     Returns:
         The access token on success, None on failure
     """
-    start_time = time.time()
     access_token = None
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Waiting for GitHub authorization...", total=None)
+    async with AsyncClient() as client:
+        while access_token is None:
+            response = await client.post(
+                "https://github.com/login/oauth/access_token",
+                data={
+                    "client_id": OAUTH_APP_CLIENT_ID,
+                    "device_code": device_code,
+                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                },
+                headers={"Accept": "application/json"},
+            )
 
-        async with AsyncClient() as client:
-            while access_token is None:
-                elapsed = int(time.time() - start_time)
-                progress.update(
-                    task,
-                    description=f"Waiting for GitHub authorization... ({elapsed}s)",
+            if response.status_code != 200:
+                raise Exception(f"Token request failed: {response.status_code}")
+
+            data = response.json()
+
+            if data.get("access_token"):
+                access_token = data["access_token"]
+            elif data.get("error") == "authorization_pending":
+                await asyncio.sleep(interval)
+                continue
+            elif data.get("error") == "slow_down":
+                interval += 3
+                await asyncio.sleep(interval)
+                continue
+            elif data.get("error") == "expired_token":
+                raise Exception("Device code has expired. Please try again.")
+            elif data.get("error") == "access_denied":
+                raise Exception("User denied authorization request.")
+            else:
+                raise Exception(
+                    f"Unexpected error: {data.get('error', 'Unknown error')}"
                 )
 
-                response = await client.post(
-                    "https://github.com/login/oauth/access_token",
-                    data={
-                        "client_id": OAUTH_APP_CLIENT_ID,
-                        "device_code": device_code,
-                        "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
-                    },
-                    headers={"Accept": "application/json"},
-                )
-
-                if response.status_code != 200:
-                    raise Exception(f"Token request failed: {response.status_code}")
-
-                data = response.json()
-
-                if data.get("access_token"):
-                    access_token = data["access_token"]
-                elif data.get("error") == "authorization_pending":
-                    await asyncio.sleep(interval)
-                    continue
-                elif data.get("error") == "slow_down":
-                    interval += 3
-                    await asyncio.sleep(interval)
-                    continue
-                elif data.get("error") == "expired_token":
-                    raise Exception("Device code has expired. Please try again.")
-                elif data.get("error") == "access_denied":
-                    raise Exception("User denied authorization request.")
-                else:
-                    raise Exception(
-                        f"Unexpected error: {data.get('error', 'Unknown error')}"
-                    )
-
-            return access_token
+        return access_token
 
 
 async def send_to_backend(access_token: str, user_id: int) -> Response:
@@ -203,7 +187,6 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         # Step 3: Poll for access token
         access_token = await poll_for_token(
             device_code["device_code"],
-            console=console,
             interval=device_code["interval"],
         )
 
@@ -211,6 +194,7 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         user_id = await get_user_id(access_token)
 
         # Step 5: Send to backend
+        console.print("⏳ Syncing with backend ...")
         backend_response = await send_to_backend(access_token, user_id)
         if backend_response.status_code == 402:
             return AuthResult(status=AuthStatus.PLAN_REQUIRED)
