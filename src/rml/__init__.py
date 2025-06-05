@@ -76,10 +76,11 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def should_retry_http_error(e: Exception) -> bool:
+def giveup_on_http_error(e: Exception) -> bool:
     if isinstance(e, HTTPStatusError):
-        return e.response.status_code // 100 == 5
-    return False
+        # Give up on 401 (failed auth) and non-5xx errors
+        return e.response.status_code // 100 != 5 or e.response.status_code == 401
+    return True
 
 
 @backoff.on_exception(
@@ -87,7 +88,7 @@ def should_retry_http_error(e: Exception) -> bool:
     (HTTPStatusError, RequestError),
     max_tries=5,
     max_time=30,
-    giveup=should_retry_http_error,
+    giveup=giveup_on_http_error,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     try:
@@ -244,35 +245,24 @@ def make_tar(
     (HTTPStatusError, RequestError),
     max_tries=5,
     max_time=30,
-    giveup=should_retry_http_error,
+    giveup=giveup_on_http_error,
 )
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
-    try:
-        access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
-        user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+    access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
+    user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
 
-        post_response = client.post(
-            "/api/check/",
-            files={"tar_file": (archive_filename, archive_path.open("rb"))},
-            data={"target_filenames": target_filenames, "user_id": user_id},
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=None,
-        )
-        post_response.raise_for_status()
+    post_response = client.post(
+        "/api/check/",
+        files={"tar_file": (archive_filename, archive_path.open("rb"))},
+        data={"target_filenames": target_filenames, "user_id": user_id},
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=None,
+    )
+    post_response.raise_for_status()
 
-        return dict(check_id=post_response.json()["check_id"])
-
-    except HTTPStatusError as e:
-        logger.error(
-            f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
-        )
-        raise e
-
-    except RequestError as e:
-        logger.error("Error occured while POSTing data to Recurse server")
-        raise e
+    return dict(check_id=post_response.json()["check_id"])
 
 
 def check_analysis_results(check_id: str, **kwargs):
