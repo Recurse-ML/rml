@@ -89,7 +89,7 @@ def giveup_on_http_error(e: Exception) -> bool:
             or e.response.status_code == 401
             or e.response.status_code == 402
         )
-    return True
+    return False
 
 
 @backoff.on_exception(
