@@ -361,6 +361,20 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
         )
 
 
+def display_auth_instructions(
+    verification_uri: str, user_code: str, console: Console
+) -> None:
+    """Show user what to do with Rich formatting"""
+    panel = Panel(
+        f"1. Open this link in your browser: [link]{verification_uri}[/link]\n"
+        f"2. Enter this code: [bold green]{user_code}[/bold green]\n"
+        f"[dim]Waiting for authorization...[/dim]",
+        title="🔐 GitHub Authentication Required",
+        border_style="yellow",
+    )
+    console.print(panel)
+
+
 def render_comments_markdown(comments: list[APICommentResponse]) -> None:
     """
     Renders comments in markdown format instead of Rich format.

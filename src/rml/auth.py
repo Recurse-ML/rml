@@ -8,7 +8,6 @@ import click
 from dotenv import dotenv_values
 from httpx import AsyncClient, Response
 from rich.console import Console
-from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from rml.datatypes import (
@@ -22,7 +21,7 @@ from rml.package_config import (
     HOST,
     OAUTH_APP_CLIENT_ID,
 )
-from rml.ui import render_auth_result
+from rml.ui import display_auth_instructions, render_auth_result
 
 console = Console()
 
@@ -45,19 +44,6 @@ async def get_device_code() -> Optional[dict]:
             return None
 
         return response.json()
-
-
-def display_user_instructions(verification_uri: str, user_code: str) -> None:
-    """Show user what to do with Rich formatting"""
-    panel = Panel(
-        f"[bold blue]GitHub Authentication Required[/bold blue]\n\n"
-        f"1. Open this link in your browser: [link]{verification_uri}[/link]\n"
-        f"2. Enter this code: [bold green]{user_code}[/bold green]\n"
-        f"[dim]Waiting for authorization...[/dim]",
-        title="🔐 Authentication",
-        border_style="blue",
-    )
-    console.print(panel)
 
 
 async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
@@ -214,9 +200,8 @@ async def authenticate_with_github() -> AuthResult:
     try:
         existing_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
         if existing_token:
-            console.print("[yellow]⚠️  You already have stored credentials.[/yellow]")
             if not click.confirm(
-                "Proceeding will overwrite your existing credentials. Continue?",
+                "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
                 default=False,
             ):
                 return AuthResult(
@@ -232,8 +217,8 @@ async def authenticate_with_github() -> AuthResult:
             )
 
         # Step 2: User manually completes auth in browser
-        display_user_instructions(
-            device_code["verification_uri"], device_code["user_code"]
+        display_auth_instructions(
+            device_code["verification_uri"], device_code["user_code"], console=console
         )
 
         # Step 3: Poll for access token
