@@ -23,10 +23,8 @@ from rml.package_config import (
 )
 from rml.ui import display_auth_instructions, render_auth_result
 
-console = Console()
 
-
-async def get_device_code() -> Optional[dict]:
+async def get_device_code() -> dict:
     """Request device code from GitHub"""
     async with AsyncClient() as client:
         response = await client.post(
@@ -39,14 +37,12 @@ async def get_device_code() -> Optional[dict]:
         )
 
         if response.status_code != 200:
-            error_msg = f"Failed to get device code: {response.status_code}"
-            console.print(f"[bold red]❌ {error_msg}[/bold red]")
-            return None
+            raise Exception(f"Failed to get device code: {response.status_code}")
 
         return response.json()
 
 
-async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
+async def poll_for_token(device_code: str, console: Console, interval: int = 1) -> str:
     """Poll GitHub until user completes authentication
 
     Args:
@@ -57,6 +53,7 @@ async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
         The access token on success, None on failure
     """
     start_time = time.time()
+    access_token = None
 
     with Progress(
         SpinnerColumn(),
@@ -66,7 +63,7 @@ async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
         task = progress.add_task("Waiting for GitHub authorization...", total=None)
 
         async with AsyncClient() as client:
-            while True:
+            while access_token is None:
                 elapsed = int(time.time() - start_time)
                 progress.update(
                     task,
@@ -84,14 +81,12 @@ async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
                 )
 
                 if response.status_code != 200:
-                    error_msg = f"Token request failed: {response.status_code}"
-                    console.print(f"[bold red]❌ {error_msg}[/bold red]")
-                    return None
+                    raise Exception(f"Token request failed: {response.status_code}")
 
                 data = response.json()
 
                 if data.get("access_token"):
-                    return data["access_token"]
+                    access_token = data["access_token"]
                 elif data.get("error") == "authorization_pending":
                     await asyncio.sleep(interval)
                     continue
@@ -100,19 +95,15 @@ async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
                     await asyncio.sleep(interval)
                     continue
                 elif data.get("error") == "expired_token":
-                    error_msg = "Device code has expired. Please try again."
-                    console.print(f"[bold red]❌ {error_msg}[/bold red]")
-                    return None
+                    raise Exception("Device code has expired. Please try again.")
                 elif data.get("error") == "access_denied":
-                    error_msg = "User denied authorization request."
-                    console.print(f"[bold red]❌ {error_msg}[/bold red]")
-                    return None
+                    raise Exception("User denied authorization request.")
                 else:
-                    error_msg = (
+                    raise Exception(
                         f"Unexpected error: {data.get('error', 'Unknown error')}"
                     )
-                    console.print(f"[bold red]❌ {error_msg}[/bold red]")
-                    return None
+
+            return access_token
 
 
 async def send_to_backend(access_token: str, user_id: int) -> Response:
@@ -126,30 +117,22 @@ async def send_to_backend(access_token: str, user_id: int) -> Response:
         return response
 
 
-async def get_user_id(access_token: str) -> Optional[int]:
+async def get_user_id(access_token: str) -> int:
     """Get user ID from GitHub using access token"""
-    try:
-        async with AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                "https://api.github.com/user",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Accept": "application/vnd.github.v3+json",
-                },
-            )
+    async with AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github.v3+json",
+            },
+        )
 
-            if response.status_code != 200:
-                console.print(
-                    f"[red]Failed to get user info: {response.status_code}[/red]"
-                )
-                return None
+        if response.status_code != 200:
+            raise Exception(f"Failed to get user ID: {response.status_code}")
 
-            user_data = response.json()
-            return user_data.get("id")
-
-    except Exception as e:
-        console.print(f"[yellow]Failed to get user ID: {e}[/yellow]")
-        return None
+        user_data = response.json()
+        return user_data["id"]
 
 
 def store_env_data(data: dict[str, str]):
@@ -195,7 +178,7 @@ def is_authenticated() -> bool:
     return get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME) is not None
 
 
-async def authenticate_with_github() -> AuthResult:
+async def authenticate_with_github(console: Console) -> AuthResult:
     """Main authentication flow with OAuth Device Flow (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)"""
     try:
         existing_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
@@ -211,10 +194,6 @@ async def authenticate_with_github() -> AuthResult:
 
         # Step 1: Get device code
         device_code = await get_device_code()
-        if not device_code:
-            return AuthResult(
-                status=AuthStatus.ERROR, message="Failed to get device code"
-            )
 
         # Step 2: User manually completes auth in browser
         display_auth_instructions(
@@ -223,23 +202,18 @@ async def authenticate_with_github() -> AuthResult:
 
         # Step 3: Poll for access token
         access_token = await poll_for_token(
-            device_code["device_code"], device_code["interval"]
+            device_code["device_code"],
+            console=console,
+            interval=device_code["interval"],
         )
-        if not access_token:
-            return AuthResult(
-                status=AuthStatus.ERROR, message="Failed to get access token"
-            )
 
         # Step 4: Get user ID from GitHub
         user_id = await get_user_id(access_token)
-        if not user_id:
-            return AuthResult(status=AuthStatus.ERROR, message="Failed to get user ID")
 
         # Step 5: Send to backend
         backend_response = await send_to_backend(access_token, user_id)
         if backend_response.status_code == 402:
             return AuthResult(status=AuthStatus.PLAN_REQUIRED)
-
         elif backend_response.status_code != 200:
             return AuthResult(
                 status=AuthStatus.ERROR,
@@ -265,7 +239,7 @@ def require_auth(f):
         console = Console()
 
         if not is_authenticated():
-            auth_result = asyncio.run(authenticate_with_github())
+            auth_result = asyncio.run(authenticate_with_github(console=console))
             render_auth_result(auth_result, console=console)
             if auth_result.status != AuthStatus.SUCCESS:
                 sys.exit(1)

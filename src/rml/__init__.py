@@ -357,8 +357,15 @@ def auth():
 @auth.command()
 def login():
     """Authenticate with GitHub"""
-    result = asyncio.run(authenticate_with_github())
-    render_auth_result(result, console=Console())
+    console = Console()
+    handler = RichHandler(
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
+    result = asyncio.run(authenticate_with_github(console=console))
+    render_auth_result(result, console=console)
 
 
 @auth.command()
