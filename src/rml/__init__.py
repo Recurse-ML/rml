@@ -362,6 +362,14 @@ def login():
     )
     logger.addHandler(handler)
 
+    if is_authenticated():
+        if not click.confirm(
+            "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
+            default=False,
+        ):
+            console.print("Authentication cancelled.")
+            sys.exit(0)
+
     result = asyncio.run(authenticate_with_github(console=console))
     render_auth_result(result, console=console)
 

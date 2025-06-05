@@ -3,7 +3,6 @@ import sys
 from functools import wraps
 from typing import Optional
 
-import click
 from dotenv import dotenv_values
 from httpx import AsyncClient, Response
 from rich.console import Console
@@ -168,16 +167,6 @@ def is_authenticated() -> bool:
 async def authenticate_with_github(console: Console) -> AuthResult:
     """Main authentication flow with OAuth Device Flow (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)"""
     try:
-        if is_authenticated():
-            if not click.confirm(
-                "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
-                default=False,
-            ):
-                return AuthResult(
-                    status=AuthStatus.CANCELLED,
-                    message="Authentication cancelled - existing credentials preserved",
-                )
-
         # Step 1: Get device code
         device_code = await get_device_code()
 

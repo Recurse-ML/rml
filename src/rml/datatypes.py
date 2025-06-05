@@ -61,7 +61,6 @@ class Diff(NamedTuple):
 class AuthStatus(Enum):
     SUCCESS = "success"
     ERROR = "error"
-    CANCELLED = "cancelled"
     PLAN_REQUIRED = "plan_required"
 
 
