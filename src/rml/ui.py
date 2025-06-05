@@ -357,6 +357,8 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
         console.print(
             "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
         )
+    elif result.status == AuthStatus.CANCELLED:
+        console.print("[bold yellow]⚠️ Authentication cancelled.[/bold yellow]")
     else:
         console.print(
             f"[bold red]❌ Authentication failed ({result.message})[/bold red]"
