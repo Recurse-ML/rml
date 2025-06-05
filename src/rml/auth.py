@@ -5,7 +5,7 @@ from typing import Optional
 
 import click
 from dotenv import dotenv_values
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -21,6 +21,7 @@ from rml.package_config import (
     HOST,
     OAUTH_APP_CLIENT_ID,
 )
+from rml.ui import render_auth_result
 
 console = Console()
 
@@ -58,7 +59,7 @@ def display_user_instructions(verification_uri: str, user_code: str) -> None:
     console.print(panel)
 
 
-async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
+async def poll_for_token(device_code: str, interval: int = 1) -> Optional[str]:
     """Poll GitHub until user completes authentication
 
     Args:
@@ -108,7 +109,7 @@ async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
                     await asyncio.sleep(interval)
                     continue
                 elif data.get("error") == "slow_down":
-                    interval += 5
+                    interval += 3
                     await asyncio.sleep(interval)
                     continue
                 elif data.get("error") == "expired_token":
@@ -127,19 +128,15 @@ async def poll_for_token(device_code: str, interval: int = 3) -> Optional[str]:
                     return None
 
 
-async def send_to_backend(access_token: str, user_id: int) -> bool:
+async def send_to_backend(access_token: str, user_id: int) -> Response:
     """Send auth data to FastAPI backend"""
-    try:
-        async with AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                f"{HOST}/api/auth/verify",
-                headers={"Authorization": f"Bearer {access_token}"},
-                data={"user_id": user_id},
-            )
-            return response
-    except Exception as e:
-        console.print(f"[yellow]Backend communication failed: {e}[/yellow]")
-        return False
+    async with AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            f"{HOST}/api/auth/verify",
+            headers={"Authorization": f"Bearer {access_token}"},
+            data={"user_id": user_id},
+        )
+        return response
 
 
 async def get_user_id(access_token: str) -> Optional[int]:
@@ -271,8 +268,7 @@ async def authenticate_with_github() -> AuthResult:
         return AuthResult(status=AuthStatus.SUCCESS)
 
     except Exception as e:
-        error_msg = f"Authentication failed: {str(e)}"
-        return AuthResult(status=AuthStatus.ERROR, message=error_msg)
+        return AuthResult(status=AuthStatus.ERROR, message=str(e))
 
 
 def require_auth(f):
@@ -280,20 +276,11 @@ def require_auth(f):
 
     @wraps(f)
     def wrapper(*args, **kwargs):
+        console = Console()
         if not is_authenticated():
-            click.echo("⚠️ Authentication required.")
+            console.print("[bold yellow]⚠️ Authentication required.[/bold yellow]")
             result = asyncio.run(authenticate_with_github())
-            if result.status == AuthStatus.SUCCESS:
-                console.print("[bold green]✅ Authentication successful![/bold green]")
-            elif result.status == AuthStatus.PLAN_REQUIRED:
-                console.print(
-                    "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
-                )
-            else:
-                console.print(
-                    f"[bold red]❌ Authentication failed ({result.message})[/bold red]"
-                )
-                raise click.Abort()
+            render_auth_result(result, console=console)
         return f(*args, **kwargs)
 
     return wrapper

@@ -14,7 +14,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
-from rml.datatypes import APICommentResponse
+from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.utils import (
     enrich_bc_ref_locations_with_source,
     make_diff_header,
@@ -317,3 +317,21 @@ def render_comments(
         file_panel = Panel(file_group, title=f"[bold white on blue] {rel_path} [/]")
 
         console.print(file_panel)
+
+
+def render_auth_result(result: AuthResult, console: Console) -> None:
+    """Process authentication result and display appropriate messages
+
+    Args:
+        result: The authentication result to process
+    """
+    if result.status == AuthStatus.SUCCESS:
+        console.print("[bold green]✅ Authentication successful![/bold green]")
+    elif result.status == AuthStatus.PLAN_REQUIRED:
+        console.print(
+            "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
+        )
+    else:
+        console.print(
+            f"[bold red]❌ Authentication failed ({result.message})[/bold red]"
+        )

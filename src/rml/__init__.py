@@ -25,7 +25,7 @@ from rml.auth import (
     is_authenticated,
     require_auth,
 )
-from rml.datatypes import APICommentResponse, AuthStatus
+from rml.datatypes import APICommentResponse
 from rml.package_config import (
     GITHUB_ACCESS_TOKEN_KEYNAME,
     GITHUB_USER_ID_KEYNAME,
@@ -34,7 +34,7 @@ from rml.package_config import (
     VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
-from rml.ui import Step, Workflow, render_comments
+from rml.ui import Step, Workflow, render_auth_result, render_comments
 
 client = Client(base_url=HOST)
 
@@ -354,15 +354,7 @@ def auth():
 def login():
     """Authenticate with GitHub"""
     result = asyncio.run(authenticate_with_github())
-    if result.status == AuthStatus.SUCCESS:
-        click.echo("✅ Authentication successful")
-    elif result.status == AuthStatus.PLAN_REQUIRED:
-        click.echo(
-            "⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again."
-        )
-    else:
-        click.echo("❌ Authentication failed")
-        raise click.Abort()
+    render_auth_result(result, console=Console())
 
 
 @auth.command()
