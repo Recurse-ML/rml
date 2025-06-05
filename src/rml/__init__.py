@@ -453,7 +453,7 @@ def analyze_cmd(
                     )
                     click.echo(f"curl {INSTALL_URL} | sh")
                     sys.exit(1)
-    #
+
     except Exception as e:
         logger.error(
             f"An error occured when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
