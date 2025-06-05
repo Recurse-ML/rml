@@ -22,7 +22,7 @@ from rml.auth import (
     is_authenticated,
     require_auth,
 )
-from rml.datatypes import APICommentResponse
+from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.package_config import (
     GITHUB_ACCESS_TOKEN_KEYNAME,
     GITHUB_USER_ID_KEYNAME,
@@ -469,6 +469,13 @@ def analyze_cmd(
             markdown=markdown,
         )
         sys.exit(0)
+
+    except HTTPStatusError as e:
+        if e.response.status_code == 402:
+            render_auth_result(
+                AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
+            )
+            sys.exit(1)
 
     except ValueError as e:
         logger.error(
