@@ -278,11 +278,12 @@ def require_auth(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         console = Console()
+
         if not is_authenticated():
             auth_result = asyncio.run(authenticate_with_github())
             render_auth_result(auth_result, console=console)
             if auth_result.status != AuthStatus.SUCCESS:
-                sys.exit(0)
+                sys.exit(1)
 
         return f(*args, **kwargs)
 
