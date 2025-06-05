@@ -159,14 +159,16 @@ def clear_env_data(keys: Optional[list[str]] = None):
 
 def is_authenticated() -> bool:
     """Check if user has a stored token"""
-    return get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME) is not None
+    return (
+        get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME) is not None
+        and get_env_value(GITHUB_USER_ID_KEYNAME) is not None
+    )
 
 
 async def authenticate_with_github(console: Console) -> AuthResult:
     """Main authentication flow with OAuth Device Flow (https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)"""
     try:
-        existing_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
-        if existing_token:
+        if is_authenticated():
             if not click.confirm(
                 "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
                 default=False,

@@ -1,7 +1,6 @@
 import asyncio
 import sys
 import time
-import webbrowser
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
@@ -14,7 +13,6 @@ from httpx import Client, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.panel import Panel
 from rich.text import Text
 
 from rml.auth import (
@@ -463,32 +461,6 @@ def analyze_cmd(
             markdown=markdown,
         )
         sys.exit(0)
-    except HTTPStatusError as e:
-        if e.response.status_code == 402:
-            panel = Panel(
-                "[bold yellow]Subscription Required[/bold yellow]\n\n"
-                "To analyze your code with rml, you need an active subscription.\n"
-                "Please purchase a plan to continue.\n\n"
-                "[link]https://github.com/marketplace/recurse-ml[/link]",
-                title="💳 Plan Needed",
-                border_style="yellow",
-            )
-            console.print(panel)
-
-            if click.confirm(
-                "Would you like to open the marketplace in your browser?", default=True
-            ):
-                webbrowser.open("https://github.com/marketplace/recurse-ml")
-
-            sys.exit(1)
-        elif e.response.status_code == 401:
-            logger.error("❌ Authentication failed. Please run `rml auth login` again.")
-            sys.exit(1)
-        else:
-            logger.error(
-                f"\nHTTP error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
-            )
-            sys.exit(1)
 
     except ValueError as e:
         logger.error(
