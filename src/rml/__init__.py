@@ -453,7 +453,7 @@ def analyze_cmd(
                     )
                     click.echo(f"curl {INSTALL_URL} | sh")
                     sys.exit(1)
-
+    #
     except Exception as e:
         logger.error(
             f"An error occured when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
@@ -474,6 +474,15 @@ def analyze_cmd(
         if e.response.status_code == 402:
             render_auth_result(
                 AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
+            )
+            sys.exit(1)
+        elif e.response.status_code == 401:
+            render_auth_result(
+                AuthResult(
+                    status=AuthStatus.ERROR,
+                    message="Authentication failed. Please run `rml auth login` again.",
+                ),
+                console=console,
             )
             sys.exit(1)
 
