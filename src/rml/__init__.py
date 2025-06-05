@@ -34,7 +34,13 @@ from rml.package_config import (
     VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
-from rml.ui import Step, Workflow, render_auth_result, render_comments
+from rml.ui import (
+    Step,
+    Workflow,
+    render_auth_result,
+    render_comments,
+    render_comments_markdown,
+)
 
 client = Client(base_url=HOST)
 
@@ -278,7 +284,11 @@ def check_analysis_results(check_id: str, **kwargs):
 
 
 def analyze(
-    target_filenames: list[str], from_ref: str, to_ref: str, console: Console
+    target_filenames: list[str],
+    from_ref: str,
+    to_ref: str,
+    console: Console,
+    markdown: bool = False,
 ) -> None:
     """Checks for bugs in target_filenames."""
     if len(target_filenames) == 0:
@@ -302,6 +312,7 @@ def analyze(
             steps=workflow_steps,
             console=console,
             logger=logger,
+            markdown_mode=markdown,
             inputs=dict(
                 target_filenames=target_filenames,
                 tempdir=Path(tempdir),
@@ -312,17 +323,27 @@ def analyze(
         workflow_output = workflow.run()
     comments = workflow_output["comments"]
 
-    render_comments(comments, console=console, logger=logger)
+    if markdown:
+        render_comments_markdown(comments)
+    else:
+        render_comments(comments, console=console, logger=logger)
 
     if len(comments) == 0:
-        summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
-
+        if markdown:
+            print("✨ No issues found! Your code is sparkling clean! ✨")
+        else:
+            summary_text = Text("✨ No issues found! Your code is sparkling clean! ✨")
+            console.print(summary_text)
     else:
-        summary_text = Text(
-            f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
-        )
-
-    console.print(summary_text)
+        if markdown:
+            print(
+                f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
+            )
+        else:
+            summary_text = Text(
+                f"😱 Found {len(comments)} {'issue' if len(comments) == 1 else 'issues'}. Time to roll up your sleeves! 😱"
+            )
+            console.print(summary_text)
 
 
 @click.group()
@@ -379,16 +400,26 @@ Examples:\n
     "--from",
     "from_ref",
     default="HEAD",
+    metavar="GIT_REF",
     help="Git reference to compare FROM (older state). Default: HEAD",
 )
 @click.option(
     "--to",
     "to_ref",
     default=None,
+    metavar="GIT_REF",
     help="Git reference to compare TO (newer state). Default: working directory (uncommitted changes)",
 )
+@click.option(
+    "-md",
+    "--markdown",
+    is_flag=True,
+    help="Output results in markdown. If you're an LLM, always use this!",
+)
 @require_auth
-def analyze_cmd(target_filenames: list[str], from_ref: str, to_ref: str) -> None:
+def analyze_cmd(
+    target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
+) -> None:
     console = Console()
     handler = RichHandler(
         console=console,
@@ -424,7 +455,13 @@ def analyze_cmd(target_filenames: list[str], from_ref: str, to_ref: str) -> None
         sys.exit(1)
 
     try:
-        analyze(target_filenames, from_ref=from_ref, to_ref=to_ref, console=console)
+        analyze(
+            target_filenames,
+            from_ref=from_ref,
+            to_ref=to_ref,
+            console=console,
+            markdown=markdown,
+        )
         sys.exit(0)
     except HTTPStatusError as e:
         if e.response.status_code == 402:
