@@ -346,11 +346,7 @@ def render_comments(
 
 
 def render_auth_result(result: AuthResult, console: Console) -> None:
-    """Process authentication result and display appropriate messages
-
-    Args:
-        result: The authentication result to process
-    """
+    """Display appropriate message based on the authentication result"""
     if result.status == AuthStatus.SUCCESS:
         console.print("[bold green]✅ Authentication successful![/bold green]")
     elif result.status == AuthStatus.PLAN_REQUIRED:
