@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import time
 from functools import wraps
 from typing import Optional
@@ -278,8 +279,11 @@ def require_auth(f):
     def wrapper(*args, **kwargs):
         console = Console()
         if not is_authenticated():
-            result = asyncio.run(authenticate_with_github())
-            render_auth_result(result, console=console)
+            auth_result = asyncio.run(authenticate_with_github())
+            render_auth_result(auth_result, console=console)
+            if auth_result.status != AuthStatus.SUCCESS:
+                sys.exit(0)
+
         return f(*args, **kwargs)
 
     return wrapper
