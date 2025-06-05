@@ -84,8 +84,8 @@ def get_git_root() -> Path:
 
 def giveup_on_http_error(e: Exception) -> bool:
     if isinstance(e, HTTPStatusError):
-        # Give up on 401 (failed auth) and non-5xx errors
-        return e.response.status_code // 100 != 5 or e.response.status_code == 401
+        # Give up on 401 (failed auth) and 5xx errors
+        return e.response.status_code // 100 == 5 or e.response.status_code == 401
     return True
 
 
