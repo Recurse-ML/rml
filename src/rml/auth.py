@@ -278,7 +278,6 @@ def require_auth(f):
     def wrapper(*args, **kwargs):
         console = Console()
         if not is_authenticated():
-            console.print("[bold yellow]⚠️ Authentication required.[/bold yellow]")
             result = asyncio.run(authenticate_with_github())
             render_auth_result(result, console=console)
         return f(*args, **kwargs)
