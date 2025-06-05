@@ -10,7 +10,6 @@ from typing import Any, Optional
 
 import backoff
 import click
-import pydantic
 from httpx import Client, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
@@ -97,33 +96,23 @@ def giveup_on_http_error(e: Exception) -> bool:
     giveup=giveup_on_http_error,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
-    try:
-        access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
-        user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+    access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
+    user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
 
-        response = client.get(
-            f"/api/check/{check_id}/",
-            headers={"Authorization": f"Bearer {access_token}"},
-            params={"user_id": user_id},
-        )
-        response.raise_for_status()
-        response_body = response.json()
-        logger.debug(response_body)
+    response = client.get(
+        f"/api/check/{check_id}/",
+        headers={"Authorization": f"Bearer {access_token}"},
+        params={"user_id": user_id},
+    )
+    response.raise_for_status()
+    response_body = response.json()
+    logger.debug(response_body)
 
-        comments = response_body.get("comments", None)
-        if comments is not None:
-            comments = list(map(APICommentResponse.model_validate, comments))
+    comments = response_body.get("comments", None)
+    if comments is not None:
+        comments = list(map(APICommentResponse.model_validate, comments))
 
-        return (response_body["status"], comments)
-
-    except HTTPStatusError as e:
-        raise e
-
-    except pydantic.ValidationError as e:
-        logger.error(
-            "Failed to validate APICommentResponse model received from the server"
-        )
-        raise e
+    return (response_body["status"], comments)
 
 
 def raise_if_files_not_relative_to_git_root(
