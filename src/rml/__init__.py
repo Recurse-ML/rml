@@ -333,11 +333,71 @@ def analyze(
             console.print(summary_text)
 
 
-@click.group(invoke_without_command=True)
+@click.group()
 @click.version_option(
     version=get_local_version(), message="🐞Running rml version %(version)s"
 )
-@click.argument("target_filenames", nargs=-1)
+def cli():
+    """Find bugs in code. Analyzes changes between two git states for bugs."""
+    pass
+
+
+@cli.group()
+def auth():
+    """Authentication commands"""
+    pass
+
+
+@auth.command()
+def login():
+    """Authenticate with GitHub"""
+    console = Console()
+    handler = RichHandler(
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
+    if is_authenticated():
+        if not click.confirm(
+            "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
+            default=False,
+        ):
+            console.print("Authentication cancelled.")
+            sys.exit(0)
+
+    result = asyncio.run(authenticate_with_github(console=console))
+    render_auth_result(result, console=console)
+
+
+@auth.command()
+def logout():
+    """Clear authentication credentials"""
+    clear_env_data([RECURSE_API_KEY_NAME])
+    click.echo("✅ Logged out successfully")
+
+
+@auth.command()
+def status():
+    """Show authentication status"""
+    if is_authenticated():
+        click.echo("✅ Authenticated")
+    else:
+        click.echo("❌ Not authenticated")
+
+
+@cli.command(
+    help="""Find bugs in code. Analyzes changes between two git states for bugs.
+
+By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
+
+Examples:\n
+  rml analyze file.py                             # Analyze uncommitted changes\n
+  rml analyze file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml analyze file.py --from main --to feature    # Compare commits
+"""
+)
+@click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option(
     "--from",
     "from_ref",
@@ -358,30 +418,8 @@ def analyze(
     is_flag=True,
     help="Output results in markdown. If you're an LLM, always use this!",
 )
-@click.pass_context
-def cli(ctx, target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool):
-    """Find bugs in code. Analyzes changes between two git states for bugs.
-
-    By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
-
-    Examples:\n
-      rml file.py                             # Analyze uncommitted changes\n
-      rml file.py --from HEAD^                # Compare vs 1 commit ago\n
-      rml file.py --from main --to feature    # Compare commits
-    """
-    # If no subcommand and files provided, run analyze
-    if ctx.invoked_subcommand is None and target_filenames:
-        # Validate file paths exist only when we're actually analyzing
-        for filename in target_filenames:
-            if not Path(filename).exists():
-                raise click.BadParameter(f"Path '{filename}' does not exist.")
-        analyze_files(target_filenames, from_ref, to_ref, markdown)
-    elif ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
-
-
 @require_auth
-def analyze_files(
+def analyze_cmd(
     target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
 ) -> None:
     console = Console()
@@ -449,52 +487,6 @@ def analyze_files(
 
     finally:
         client.close()
-
-
-@cli.command()
-@click.option(
-    "--logout",
-    is_flag=True,
-    help="Clear authentication credentials",
-)
-@click.option(
-    "--status",
-    is_flag=True,
-    help="Show authentication status",
-)
-def auth(logout: bool, status: bool):
-    """Authenticate with GitHub or manage auth state"""
-    console = Console()
-
-    if logout:
-        clear_env_data([RECURSE_API_KEY_NAME])
-        click.echo("✅ Logged out successfully")
-        return
-
-    if status:
-        if is_authenticated():
-            click.echo("✅ Authenticated")
-        else:
-            click.echo("❌ Not authenticated")
-        return
-
-    # Default behavior: login
-    handler = RichHandler(
-        console=console,
-        show_time=False,
-    )
-    logger.addHandler(handler)
-
-    if is_authenticated():
-        if not click.confirm(
-            "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
-            default=False,
-        ):
-            console.print("Authentication cancelled.")
-            sys.exit(0)
-
-    result = asyncio.run(authenticate_with_github(console=console))
-    render_auth_result(result, console=console)
 
 
 if __name__ == "__main__":
