@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import time
 from datetime import datetime
@@ -8,21 +9,34 @@ from typing import Any, Optional
 
 import backoff
 import click
-import pydantic
 from httpx import Client, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
-from rml.datatypes import APICommentResponse
+from rml.auth import (
+    authenticate_with_github,
+    clear_env_data,
+    get_env_value,
+    is_authenticated,
+    require_auth,
+)
+from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.package_config import (
     HOST,
     INSTALL_URL,
+    RECURSE_API_KEY_NAME,
     VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
-from rml.ui import Step, Workflow, render_comments, render_comments_markdown
+from rml.ui import (
+    Step,
+    Workflow,
+    render_auth_result,
+    render_comments,
+    render_comments_markdown,
+)
 
 client = Client(base_url=HOST)
 
@@ -64,9 +78,14 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def should_retry_http_error(e: Exception) -> bool:
+def giveup_on_http_error(e: Exception) -> bool:
     if isinstance(e, HTTPStatusError):
-        return e.response.status_code // 100 == 5
+        # Give up on 401 (failed auth), 402 (subscription required), and 5xx errors
+        return (
+            e.response.status_code // 100 == 5
+            or e.response.status_code == 401
+            or e.response.status_code == 402
+        )
     return False
 
 
@@ -75,23 +94,24 @@ def should_retry_http_error(e: Exception) -> bool:
     (HTTPStatusError, RequestError),
     max_tries=5,
     max_time=30,
-    giveup=should_retry_http_error,
+    giveup=giveup_on_http_error,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
-    try:
-        response = client.get(f"/api/check/{check_id}/")
-        response.raise_for_status()
-        response_body = response.json()
-        logger.debug(response_body)
-        comments = response_body.get("comments", None)
-        if comments is not None:
-            comments = list(map(APICommentResponse.model_validate, comments))
-        return (response_body["status"], comments)
-    except pydantic.ValidationError as e:
-        logger.error(
-            "Failed to validate APICommentResponse model received from the server"
-        )
-        raise e
+    api_key = get_env_value(RECURSE_API_KEY_NAME)
+
+    response = client.get(
+        f"/api/check/{check_id}/",
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    response.raise_for_status()
+    response_body = response.json()
+    logger.debug(response_body)
+
+    comments = response_body.get("comments", None)
+    if comments is not None:
+        comments = list(map(APICommentResponse.model_validate, comments))
+
+    return (response_body["status"], comments)
 
 
 def raise_if_files_not_relative_to_git_root(
@@ -219,30 +239,23 @@ def make_tar(
     (HTTPStatusError, RequestError),
     max_tries=5,
     max_time=30,
-    giveup=should_retry_http_error,
+    giveup=giveup_on_http_error,
 )
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
-    try:
-        post_response = client.post(
-            "/api/check/",
-            files={"tar_file": (archive_filename, archive_path.open("rb"))},
-            data={"target_filenames": target_filenames},
-            timeout=None,
-        )
+    api_key = get_env_value(RECURSE_API_KEY_NAME)
 
-        post_response.raise_for_status()
+    post_response = client.post(
+        "/api/check/",
+        files={"tar_file": (archive_filename, archive_path.open("rb"))},
+        data={"target_filenames": target_filenames},
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=None,
+    )
+    post_response.raise_for_status()
 
-        return dict(check_id=post_response.json()["check_id"])
-    except HTTPStatusError as e:
-        logger.error(
-            f"Recurse.ML server returned a failure status code in POST: ({e.response.status_code})"
-        )
-        raise e
-    except RequestError as e:
-        logger.error("Error occured while POSTing data to Recurse server")
-        raise e
+    return dict(check_id=post_response.json()["check_id"])
 
 
 def check_analysis_results(check_id: str, **kwargs):
@@ -320,19 +333,69 @@ def analyze(
             console.print(summary_text)
 
 
-@click.command(
+@click.group()
+@click.version_option(
+    version=get_local_version(), message="🐞Running rml version %(version)s"
+)
+def cli():
+    """Find bugs in code. Analyzes changes between two git states for bugs."""
+    pass
+
+
+@cli.group()
+def auth():
+    """Authentication commands"""
+    pass
+
+
+@auth.command()
+def login():
+    """Authenticate with GitHub"""
+    console = Console()
+    handler = RichHandler(
+        console=console,
+        show_time=False,
+    )
+    logger.addHandler(handler)
+
+    if is_authenticated():
+        if not click.confirm(
+            "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
+            default=False,
+        ):
+            console.print("Authentication cancelled.")
+            sys.exit(0)
+
+    result = asyncio.run(authenticate_with_github(console=console))
+    render_auth_result(result, console=console)
+
+
+@auth.command()
+def logout():
+    """Clear authentication credentials"""
+    clear_env_data([RECURSE_API_KEY_NAME])
+    click.echo("✅ Logged out successfully")
+
+
+@auth.command()
+def status():
+    """Show authentication status"""
+    if is_authenticated():
+        click.echo("✅ Authenticated")
+    else:
+        click.echo("❌ Not authenticated")
+
+
+@cli.command(
     help="""Find bugs in code. Analyzes changes between two git states for bugs.
 
 By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
 
 Examples:\n
-  rml file.py                             # Analyze uncommitted changes\n
-  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
-  rml file.py --from main --to feature    # Compare commits
+  rml analyze file.py                             # Analyze uncommitted changes\n
+  rml analyze file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml analyze file.py --from main --to feature    # Compare commits
 """
-)
-@click.version_option(
-    version=get_local_version(), message="🐞Running rml version %(version)s"
 )
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option(
@@ -355,7 +418,8 @@ Examples:\n
     is_flag=True,
     help="Output results in markdown. If you're an LLM, always use this!",
 )
-def main(
+@require_auth
+def analyze_cmd(
     target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
 ) -> None:
     console = Console()
@@ -401,14 +465,29 @@ def main(
             markdown=markdown,
         )
         sys.exit(0)
-    except Exception as e:
+
+    except HTTPStatusError as e:
+        if e.response.status_code == 402:
+            render_auth_result(
+                AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
+            )
+            sys.exit(1)
+        elif e.response.status_code == 401:
+            render_auth_result(
+                AuthResult(status=AuthStatus.ERROR),
+                console=console,
+            )
+            sys.exit(1)
+
+    except ValueError as e:
         logger.error(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
+
     finally:
         client.close()
 
 
 if __name__ == "__main__":
-    main()
+    cli()
