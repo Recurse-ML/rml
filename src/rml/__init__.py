@@ -24,10 +24,9 @@ from rml.auth import (
 )
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.package_config import (
-    GITHUB_ACCESS_TOKEN_KEYNAME,
-    GITHUB_USER_ID_KEYNAME,
     HOST,
     INSTALL_URL,
+    RECURSE_API_KEY_NAME,
     VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
@@ -98,13 +97,11 @@ def giveup_on_http_error(e: Exception) -> bool:
     giveup=giveup_on_http_error,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
-    access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
-    user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+    api_key = get_env_value(RECURSE_API_KEY_NAME)
 
     response = client.get(
         f"/api/check/{check_id}/",
-        headers={"Authorization": f"Bearer {access_token}"},
-        params={"user_id": user_id},
+        headers={"Authorization": f"Bearer {api_key}"},
     )
     response.raise_for_status()
     response_body = response.json()
@@ -247,14 +244,13 @@ def make_tar(
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
-    access_token = get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME)
-    user_id = get_env_value(GITHUB_USER_ID_KEYNAME)
+    api_key = get_env_value(RECURSE_API_KEY_NAME)
 
     post_response = client.post(
         "/api/check/",
         files={"tar_file": (archive_filename, archive_path.open("rb"))},
-        data={"target_filenames": target_filenames, "user_id": user_id},
-        headers={"Authorization": f"Bearer {access_token}"},
+        data={"target_filenames": target_filenames},
+        headers={"Authorization": f"Bearer {api_key}"},
         timeout=None,
     )
     post_response.raise_for_status()
@@ -377,7 +373,7 @@ def login():
 @auth.command()
 def logout():
     """Clear authentication credentials"""
-    clear_env_data([GITHUB_ACCESS_TOKEN_KEYNAME, GITHUB_USER_ID_KEYNAME])
+    clear_env_data([RECURSE_API_KEY_NAME])
     click.echo("✅ Logged out successfully")
 
 

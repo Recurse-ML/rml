@@ -13,10 +13,9 @@ from rml.datatypes import (
 )
 from rml.package_config import (
     ENV_FILE_PATH,
-    GITHUB_ACCESS_TOKEN_KEYNAME,
-    GITHUB_USER_ID_KEYNAME,
     HOST,
     OAUTH_APP_CLIENT_ID,
+    RECURSE_API_KEY_NAME,
 )
 from rml.ui import display_auth_instructions, render_auth_result
 
@@ -157,11 +156,8 @@ def clear_env_data(keys: Optional[list[str]] = None):
 
 
 def is_authenticated() -> bool:
-    """Check if user has a stored token"""
-    return (
-        get_env_value(GITHUB_ACCESS_TOKEN_KEYNAME) is not None
-        and get_env_value(GITHUB_USER_ID_KEYNAME) is not None
-    )
+    """Check if user has a stored API key"""
+    return get_env_value(RECURSE_API_KEY_NAME) is not None
 
 
 async def authenticate_with_github(console: Console) -> AuthResult:
@@ -195,10 +191,13 @@ async def authenticate_with_github(console: Console) -> AuthResult:
                 message="Failed to sync with backend",
             )
 
-        # Step 6: Store locally
-        store_env_data(
-            {GITHUB_ACCESS_TOKEN_KEYNAME: access_token, GITHUB_USER_ID_KEYNAME: user_id}
-        )
+        # Step 6: Store API key locally
+        response_data = backend_response.json()
+        api_key = response_data.get("api_key")
+        if not api_key:
+            raise Exception("No API key received from backend")
+
+        store_env_data({RECURSE_API_KEY_NAME: api_key})
 
         return AuthResult(status=AuthStatus.SUCCESS)
 
