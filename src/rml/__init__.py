@@ -474,10 +474,7 @@ def analyze_cmd(
             sys.exit(1)
         elif e.response.status_code == 401:
             render_auth_result(
-                AuthResult(
-                    status=AuthStatus.ERROR,
-                    message="Authentication failed. Please run `rml auth login` again.",
-                ),
+                AuthResult(status=AuthStatus.ERROR),
                 console=console,
             )
             sys.exit(1)

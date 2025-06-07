@@ -355,7 +355,7 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
         )
     else:
         console.print(
-            f"[bold red]❌ Authentication failed ({result.message})[/bold red]"
+            f"[bold red]❌ Authentication failed {'(' + result.message + ')' if result.message else ''}[/bold red]"
         )
 
 
