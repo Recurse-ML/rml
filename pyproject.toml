@@ -45,7 +45,7 @@ known-local-folder = ["src", "rml"] # Necessary to separate imports for local pa
 
 
 [project.scripts]
-rml = "rml:cli"
+rml = "rml:main"
 
 [build-system]
 requires = ["hatchling"]

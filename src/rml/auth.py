@@ -127,32 +127,10 @@ def store_env_data(data: dict[str, str]):
     )
 
 
-def get_env_data() -> dict[str, str]:
-    """Read all data from .env.rml file"""
-    env_data = dotenv_values(ENV_FILE_PATH)
-    return {k: v or "" for k, v in env_data.items() if v}
-
-
 def get_env_value(key: str) -> Optional[str]:
     """Read a specific value from .env.rml file"""
     env_data = dotenv_values(ENV_FILE_PATH)
     return env_data.get(key)
-
-
-def clear_env_data(keys: Optional[list[str]] = None):
-    """Remove specified keys from .env.rml file, or clear all if no keys specified"""
-    env_data = dotenv_values(ENV_FILE_PATH)
-    env_data = {k: v or "" for k, v in env_data.items()}
-
-    if keys is None:
-        env_data.clear()
-    else:
-        for key in keys:
-            env_data.pop(key, None)
-
-    ENV_FILE_PATH.write_text(
-        "\n".join(f"{key}={value}" for key, value in env_data.items())
-    )
 
 
 def is_authenticated() -> bool:

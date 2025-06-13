@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import time
 from datetime import datetime
@@ -15,13 +14,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
-from rml.auth import (
-    authenticate_with_github,
-    clear_env_data,
-    get_env_value,
-    is_authenticated,
-    require_auth,
-)
+from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.package_config import (
     HOST,
@@ -333,69 +326,19 @@ def analyze(
             console.print(summary_text)
 
 
-@click.group()
-@click.version_option(
-    version=get_local_version(), message="🐞Running rml version %(version)s"
-)
-def cli():
-    """Find bugs in code. Analyzes changes between two git states for bugs."""
-    pass
-
-
-@cli.group()
-def auth():
-    """Authentication commands"""
-    pass
-
-
-@auth.command()
-def login():
-    """Authenticate with GitHub"""
-    console = Console()
-    handler = RichHandler(
-        console=console,
-        show_time=False,
-    )
-    logger.addHandler(handler)
-
-    if is_authenticated():
-        if not click.confirm(
-            "⚠️  Local credentials detected, proceeding will overwrite them. Continue?",
-            default=False,
-        ):
-            console.print("Authentication cancelled.")
-            sys.exit(0)
-
-    result = asyncio.run(authenticate_with_github(console=console))
-    render_auth_result(result, console=console)
-
-
-@auth.command()
-def logout():
-    """Clear authentication credentials"""
-    clear_env_data([RECURSE_API_KEY_NAME])
-    click.echo("✅ Logged out successfully")
-
-
-@auth.command()
-def status():
-    """Show authentication status"""
-    if is_authenticated():
-        click.echo("✅ Authenticated")
-    else:
-        click.echo("❌ Not authenticated")
-
-
-@cli.command(
+@click.command(
     help="""Find bugs in code. Analyzes changes between two git states for bugs.
 
 By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
 
 Examples:\n
-  rml analyze file.py                             # Analyze uncommitted changes\n
-  rml analyze file.py --from HEAD^                # Compare vs 1 commit ago\n
-  rml analyze file.py --from main --to feature    # Compare commits
+  rml file.py                             # Analyze uncommitted changes\n
+  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml file.py --from main --to feature    # Compare commits
 """
+)
+@click.version_option(
+    version=get_local_version(), message="🐞Running rml version %(version)s"
 )
 @click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
 @click.option(
@@ -419,9 +362,10 @@ Examples:\n
     help="Output results in markdown. If you're an LLM, always use this!",
 )
 @require_auth
-def analyze_cmd(
+def main(
     target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
 ) -> None:
+    """Find bugs in code. Analyzes changes between two git states for bugs."""
     console = Console()
     handler = RichHandler(
         console=console,
@@ -490,4 +434,4 @@ def analyze_cmd(
 
 
 if __name__ == "__main__":
-    cli()
+    main()
