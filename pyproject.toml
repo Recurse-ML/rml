@@ -28,6 +28,7 @@ test = [
 
 dev = [
   "pre-commit",
+  "ruff >= 0.9",
 ]
 
 [tool.ruff]
