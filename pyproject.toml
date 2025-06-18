@@ -6,6 +6,7 @@ readme = "README.md"
 authors = [
     {name = "Armin Stepanyan", email = "a@recurse.ml"},
     {name = "Enzo Incutti", email = "e@recurse.ml"},
+    {name = "Constantinos Psomadakis", email = "c@recurse.ml"},
 ]
 requires-python = ">=3.11"
 dependencies = [
