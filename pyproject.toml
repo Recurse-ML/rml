@@ -16,7 +16,7 @@ dependencies = [
     "python-dotenv",
     "pyinstaller>=6.13.0",
     "rich",
-    "backoff>=2.2.1",
+    "tenacity"
 ]
 
 [project.optional-dependencies]
