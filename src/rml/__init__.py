@@ -247,6 +247,13 @@ def post_check(
         timeout=None,
     )
     post_response.raise_for_status()
+    post_response_body = post_response.json()
+
+    # Check if the response contains a check_id
+    if "check_id" not in post_response_body:
+        raise ValueError(
+            "Server did not respond with a check_id. Please check your API key and try again."
+        )
 
     return dict(check_id=post_response.json()["check_id"])
 
