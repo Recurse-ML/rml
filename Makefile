@@ -35,7 +35,9 @@ install-dev:
 
 unit-test: lint-check
 	pytest --durations=10 tests/unit/
-	
+
+test: unit-test
+
 bump-version:
 	@if [ -z "$(version)" ]; then \
 		echo "Error: version argument is required. Usage: make bump-version version=X.Y.Z"; \
