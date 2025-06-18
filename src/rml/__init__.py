@@ -415,13 +415,13 @@ def main(
             render_auth_result(
                 AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
             )
-            sys.exit(1)
         elif e.response.status_code == 401:
             render_auth_result(
                 AuthResult(status=AuthStatus.ERROR),
                 console=console,
             )
-            sys.exit(1)
+
+        sys.exit(1)
 
     except ValueError as e:
         logger.error(
