@@ -29,7 +29,7 @@ install-test:
 	uv sync --locked --extra test
 
 install-dev:
-	uv sync --locked --extra dev
+	uv sync --locked --extra test --extra dev
 	pre-commit install
 	pre-commit autoupdate
 
