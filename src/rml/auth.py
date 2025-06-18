@@ -16,6 +16,7 @@ from rml.package_config import (
     HOST,
     OAUTH_APP_CLIENT_ID,
     RECURSE_API_KEY_NAME,
+    SKIP_AUTH,
 )
 from rml.ui import display_auth_instructions, render_auth_result
 
@@ -88,7 +89,7 @@ async def poll_for_token(device_code: str, interval: int = 1) -> str:
         return access_token
 
 
-async def send_to_backend(access_token: str, user_id: int) -> Response:
+async def send_auth_data_to_backend(access_token: str, user_id: int) -> Response:
     """Send auth data to FastAPI backend"""
     async with AsyncClient(timeout=10.0) as client:
         response = await client.post(
@@ -144,36 +145,43 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         # Step 1: Get device code
         device_code = await get_device_code()
 
-        # Step 2: User manually completes auth in browser
-        display_auth_instructions(
-            device_code["verification_uri"], device_code["user_code"], console=console
-        )
+        if SKIP_AUTH:
+            user_id = 123456789
+            api_key = "test_123456789"
 
-        # Step 3: Poll for access token
-        access_token = await poll_for_token(
-            device_code["device_code"],
-            interval=device_code["interval"],
-        )
-
-        # Step 4: Get user ID from GitHub
-        user_id = await get_user_id(access_token)
-
-        # Step 5: Send to backend
-        console.print("⏳ Syncing with backend ...")
-        backend_response = await send_to_backend(access_token, user_id)
-        if backend_response.status_code == 402:
-            return AuthResult(status=AuthStatus.PLAN_REQUIRED)
-        elif backend_response.status_code != 200:
-            return AuthResult(
-                status=AuthStatus.ERROR,
-                message="Failed to sync with backend",
+        else:
+            # Step 2: User manually completes auth in browser
+            display_auth_instructions(
+                device_code["verification_uri"],
+                device_code["user_code"],
+                console=console,
             )
 
-        # Step 6: Store API key locally
-        response_data = backend_response.json()
-        api_key = response_data.get("api_key")
-        if not api_key:
-            raise Exception("No API key received from backend")
+            # Step 3: Poll for access token
+            access_token = await poll_for_token(
+                device_code["device_code"],
+                interval=device_code["interval"],
+            )
+
+            # Step 4: Get user ID from GitHub
+            user_id = await get_user_id(access_token)
+
+            # Step 5: Send to backend
+            console.print("⏳ Syncing with backend ...")
+            backend_response = await send_auth_data_to_backend(access_token, user_id)
+            if backend_response.status_code == 402:
+                return AuthResult(status=AuthStatus.PLAN_REQUIRED)
+            elif backend_response.status_code != 200:
+                return AuthResult(
+                    status=AuthStatus.ERROR,
+                    message="Failed to sync with backend",
+                )
+
+            # Step 6: Store API key locally
+            response_data = backend_response.json()
+            api_key = response_data.get("api_key")
+            if not api_key:
+                raise Exception("No API key received from backend")
 
         store_env_data({RECURSE_API_KEY_NAME: api_key})
 
