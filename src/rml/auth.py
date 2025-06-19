@@ -1,9 +1,8 @@
 import asyncio
+import os
 import sys
 from functools import wraps
-from typing import Optional
 
-from dotenv import dotenv_values
 from httpx import AsyncClient, Response
 from rich.console import Console
 
@@ -11,12 +10,7 @@ from rml.datatypes import (
     AuthResult,
     AuthStatus,
 )
-from rml.package_config import (
-    ENV_FILE_PATH,
-    HOST,
-    OAUTH_APP_CLIENT_ID,
-    RECURSE_API_KEY_NAME,
-)
+from rml.env_utils import get_rml_env_value, update_rml_env
 from rml.ui import display_auth_instructions, render_auth_result
 
 
@@ -26,7 +20,7 @@ async def get_device_code() -> dict:
         response = await client.post(
             "https://github.com/login/device/code",
             data={
-                "client_id": OAUTH_APP_CLIENT_ID,
+                "client_id": os.getenv("OAUTH_APP_CLIENT_ID"),
                 "scope": "read:user",
             },
             headers={"Accept": "application/json"},
@@ -55,7 +49,7 @@ async def poll_for_token(device_code: str, interval: int = 1) -> str:
             response = await client.post(
                 "https://github.com/login/oauth/access_token",
                 data={
-                    "client_id": OAUTH_APP_CLIENT_ID,
+                    "client_id": os.getenv("OAUTH_APP_CLIENT_ID"),
                     "device_code": device_code,
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                 },
@@ -92,7 +86,7 @@ async def send_to_backend(access_token: str, user_id: int) -> Response:
     """Send auth data to FastAPI backend"""
     async with AsyncClient(timeout=10.0) as client:
         response = await client.post(
-            f"{HOST}/api/auth/verify",
+            f"{os.getenv('BACKEND_URL')}/api/auth/verify",
             headers={"Authorization": f"Bearer {access_token}"},
             data={"user_id": user_id},
         )
@@ -117,25 +111,9 @@ async def get_user_id(access_token: str) -> int:
         return user_data["id"]
 
 
-def store_env_data(data: dict[str, str]):
-    """Store key-value pairs in .env.rml file"""
-    env_data = dotenv_values(ENV_FILE_PATH)
-    env_data = {k: v or "" for k, v in env_data.items()}
-    env_data.update(data)
-    ENV_FILE_PATH.write_text(
-        "\n".join(f"{key}={value}" for key, value in env_data.items())
-    )
-
-
-def get_env_value(key: str) -> Optional[str]:
-    """Read a specific value from .env.rml file"""
-    env_data = dotenv_values(ENV_FILE_PATH)
-    return env_data.get(key)
-
-
 def is_authenticated() -> bool:
     """Check if user has a stored API key"""
-    return get_env_value(RECURSE_API_KEY_NAME) is not None
+    return get_rml_env_value("RECURSE_API_KEY") is not None
 
 
 async def authenticate_with_github(console: Console) -> AuthResult:
@@ -175,7 +153,7 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         if not api_key:
             raise Exception("No API key received from backend")
 
-        store_env_data({RECURSE_API_KEY_NAME: api_key})
+        update_rml_env({"api_key": api_key})
 
         return AuthResult(status=AuthStatus.SUCCESS)
 

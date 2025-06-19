@@ -1,5 +1,5 @@
 import logging
+import os
 
-LOG_LEVEL = "INFO"
 logger = logging.getLogger("rml")
-logger.setLevel(LOG_LEVEL)
+logger.setLevel(os.getenv("RML_LOG_LEVEL", "DEBUG").upper())

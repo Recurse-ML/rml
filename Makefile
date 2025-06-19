@@ -6,6 +6,9 @@ lint:
 	ruff check --fix
 	ruff format
 
+run:
+	uv run --env-file=.env rml
+
 bundle:
 	bash -c '\
 	  detect_arch() { \

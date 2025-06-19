@@ -24,11 +24,15 @@ dependencies = [
 test = [
   "pytest >= 8.0",
   "ruff >= 0.9",
+  "pytest-dotenv",
 ]
 
 dev = [
   "pre-commit",
 ]
+
+[tool.pytest.ini_options]
+env_files = [".env"]
 
 [tool.ruff]
 include = ["src/**/*.py", "cli/**/*.py", "tests/**/*.py"]

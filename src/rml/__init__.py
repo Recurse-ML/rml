@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 from datetime import datetime
@@ -14,14 +15,9 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
-from rml.auth import get_env_value, require_auth
+from rml.auth import require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
-from rml.package_config import (
-    HOST,
-    INSTALL_URL,
-    RECURSE_API_KEY_NAME,
-    VERSION_CHECK_URL,
-)
+from rml.env_utils import get_rml_env_value
 from rml.package_logger import logger
 from rml.ui import (
     Step,
@@ -31,7 +27,7 @@ from rml.ui import (
     render_comments_markdown,
 )
 
-client = Client(base_url=HOST)
+client = Client(base_url=os.getenv("BACKEND_URL"))
 
 
 def installed_from_source() -> bool:
@@ -44,7 +40,7 @@ def get_local_version() -> str:
 
 
 def get_remote_version() -> str:
-    response = client.get(VERSION_CHECK_URL, follow_redirects=True)
+    response = client.get(os.getenv("VERSION_CHECK_URL"), follow_redirects=True)
     response.raise_for_status()
     return response.text.strip()
 
@@ -90,7 +86,8 @@ def giveup_on_http_error(e: Exception) -> bool:
     giveup=giveup_on_http_error,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
-    api_key = get_env_value(RECURSE_API_KEY_NAME)
+    api_key = get_rml_env_value("RECURSE_API_KEY")
+    # TODO: Raise if api_key is None (not authenticated)
 
     response = client.get(
         f"/api/check/{check_id}/",
@@ -237,7 +234,8 @@ def make_tar(
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
 ) -> dict[str, Any]:
-    api_key = get_env_value(RECURSE_API_KEY_NAME)
+    api_key = get_rml_env_value("RECURSE_API_KEY")
+    # TODO: Raise if api_key is None (not authenticated)
 
     post_response = client.post(
         "/api/check/",
@@ -384,14 +382,14 @@ def main(
             else:
                 try:
                     logger.info("Updating rml to latest version...")
-                    (local["curl"][INSTALL_URL] | local["sh"]) & FG
+                    (local["curl"][os.getenv("RECURSE_INSTALL_URL")] | local["sh"]) & FG
                     logger.info("rml updated to latest version.")
                 except Exception as e:
                     logger.error(f"Failed to update rml: {e}")
                     click.echo(
                         "rml requires latest version to run. Please update manually with:"
                     )
-                    click.echo(f"curl {INSTALL_URL} | sh")
+                    click.echo(f"curl {os.getenv('RECURSE_INSTALL_URL')} | sh")
                     sys.exit(1)
 
     except Exception as e:
