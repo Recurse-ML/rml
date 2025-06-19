@@ -7,7 +7,7 @@ lint:
 	ruff format
 
 run:
-	uv run --env-file=.env rml
+	uv run --env-file=.env rml $(arg)
 
 bundle:
 	bash -c '\
