@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import backoff
 import click
-from httpx import Client, HTTPStatusError, RequestError
+from httpx import Client, ConnectError, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
@@ -433,6 +433,12 @@ def main(
     except ValueError as e:
         logger.error(
             f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+        )
+        sys.exit(1)
+
+    except ConnectError as e:
+        logger.error(
+            f"\nAn error occured while connecting to the server: {e}\nPlease check your internet connection and try again."
         )
         sys.exit(1)
 
