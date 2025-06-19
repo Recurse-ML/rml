@@ -15,8 +15,6 @@ REQUIRED_ENV_VARS = [
 
 def validate_envs() -> None:
     missing = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
-    print(f"Validating environment variables: {REQUIRED_ENV_VARS}")
-    print(f"Missing environment variables: {missing}")
     if missing:
         raise RuntimeError(
             f"Missing required environment variables: {', '.join(missing)}"
