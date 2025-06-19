@@ -1,5 +1,14 @@
 name: Unit Tests
 
+env:
+  RECURSE_INSTALL_URL: "https://install.recurse.ml"
+  VERSION_CHECK_URL: "https://github.com/Recurse-ML/rml/releases/latest/download/version.txt"
+  BACKEND_URL: "https://squash-322339097191.europe-west3.run.app"
+  OAUTH_APP_CLIENT_ID: "Ov23liYqdgBWHJgs6HCd"
+  RML_ENV_FILE: ".env.rml"
+  RML_LOG_LEVEL: "DEBUG"
+
+
 on:
   pull_request:
 
