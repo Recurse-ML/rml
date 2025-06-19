@@ -153,7 +153,7 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         if not api_key:
             raise Exception("No API key received from backend")
 
-        update_rml_env({"api_key": api_key})
+        update_rml_env({"RECURSE_API_KEY": api_key})
 
         return AuthResult(status=AuthStatus.SUCCESS)
 
