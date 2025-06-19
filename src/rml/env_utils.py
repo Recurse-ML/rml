@@ -3,6 +3,25 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
+REQUIRED_ENV_VARS = [
+    "RECURSE_INSTALL_URL",
+    "VERSION_CHECK_URL",
+    "BACKEND_URL",
+    "OAUTH_APP_CLIENT_ID",
+    "RML_ENV_FILE",
+    "RML_LOG_LEVEL",
+]
+
+
+def validate_envs() -> None:
+    missing = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+    print(f"Validating environment variables: {REQUIRED_ENV_VARS}")
+    print(f"Missing environment variables: {missing}")
+    if missing:
+        raise RuntimeError(
+            f"Missing required environment variables: {', '.join(missing)}"
+        )
+
 
 def get_rml_env_path() -> Path:
     env_file = os.getenv("RML_ENV_FILE", ".env.rml")

@@ -17,7 +17,7 @@ from rich.text import Text
 
 from rml.auth import require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
-from rml.env_utils import get_rml_env_value
+from rml.env_utils import get_rml_env_value, validate_envs
 from rml.package_logger import logger
 from rml.ui import (
     Step,
@@ -26,6 +26,8 @@ from rml.ui import (
     render_comments,
     render_comments_markdown,
 )
+
+validate_envs()
 
 client = Client(base_url=os.getenv("BACKEND_URL"))
 
