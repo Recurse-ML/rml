@@ -24,12 +24,15 @@ bundle:
 	  pyinstaller src/rml/__init__.py --name rml --noconfirm; \
 	  tar -czf dist/$$TAR_NAME -C dist rml/;'
 
-install:
-	install-uv
-	uv sync --locked
-
 install-uv:
-	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/$(UV_VERSION)/uv-installer.sh | sh
+	@command -v uv >/dev/null 2>&1 && echo "✅ uv already installed" || ( \
+		echo "🛠️  Installing uv..."; \
+		curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/$(UV_VERSION)/uv-installer.sh | sh \
+	)
+
+install:
+	make install-uv
+	uv sync --locked
 
 install-test:
 	uv sync --locked --extra test
