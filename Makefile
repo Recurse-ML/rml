@@ -25,6 +25,7 @@ bundle:
 	  tar -czf dist/$$TAR_NAME -C dist rml/;'
 
 install:
+	install-uv
 	uv sync --locked
 
 install-uv:
