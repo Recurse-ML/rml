@@ -15,3 +15,5 @@ HOST = os.getenv("U_HOST", "https://squash-322339097191.europe-west3.run.app")
 OAUTH_APP_CLIENT_ID = os.getenv("U_OAUTH_APP_CLIENT_ID", "Ov23liYqdgBWHJgs6HCd")
 ENV_FILE_PATH = PROJECT_ROOT / ".env.rml"
 RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
+
+SKIP_AUTH = True
