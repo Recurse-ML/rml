@@ -6,13 +6,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
-import backoff
 import click
 from httpx import Client, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
@@ -71,7 +76,7 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def giveup_on_http_error(e: Exception) -> bool:
+def should_retry_http_error(e: Exception) -> bool:
     if isinstance(e, HTTPStatusError):
         # Give up on 401 (failed auth), 402 (subscription required), and 5xx errors
         return (
@@ -82,12 +87,14 @@ def giveup_on_http_error(e: Exception) -> bool:
     return False
 
 
-@backoff.on_exception(
-    backoff.expo,
-    (HTTPStatusError, RequestError),
-    max_tries=5,
-    max_time=30,
-    giveup=giveup_on_http_error,
+@retry(
+    retry=retry_if_exception(
+        lambda e: isinstance(e, (HTTPStatusError, RequestError))
+        and not should_retry_http_error(e)
+    ),
+    wait=wait_exponential(multiplier=1, min=1, max=30),
+    stop=stop_after_attempt(5),
+    reraise=False,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     api_key = get_env_value(RECURSE_API_KEY_NAME)
@@ -227,12 +234,14 @@ def make_tar(
     return dict(archive_filename=archive_filename, archive_path=archive_path)
 
 
-@backoff.on_exception(
-    backoff.expo,
-    (HTTPStatusError, RequestError),
-    max_tries=5,
-    max_time=30,
-    giveup=giveup_on_http_error,
+@retry(
+    wait=wait_exponential(multiplier=1, min=1, max=30),
+    stop=stop_after_attempt(5),
+    reraise=False,
+    retry=retry_if_exception(
+        lambda e: isinstance(e, (HTTPStatusError, RequestError))
+        and not should_retry_http_error(e)
+    ),
 )
 def post_check(
     archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
