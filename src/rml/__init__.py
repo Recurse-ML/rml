@@ -94,7 +94,7 @@ def should_retry_http_error(e: Exception) -> bool:
     ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
-    reraise=True,
+    reraise=False,
 )
 def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentResponse]]]:
     api_key = get_env_value(RECURSE_API_KEY_NAME)
@@ -237,7 +237,7 @@ def make_tar(
 @retry(
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
-    reraise=True,
+    reraise=False,
     retry=retry_if_exception(
         lambda e: isinstance(e, (HTTPStatusError, RequestError))
         and not should_retry_http_error(e)
