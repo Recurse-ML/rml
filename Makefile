@@ -1,3 +1,5 @@
+UV_VERSION=0.6.16
+
 lint-check:
 	ruff check --no-fix
 	ruff format --check
@@ -22,7 +24,14 @@ bundle:
 	  pyinstaller src/rml/__init__.py --name rml --noconfirm; \
 	  tar -czf dist/$$TAR_NAME -C dist rml/;'
 
+install-uv:
+	@command -v uv >/dev/null 2>&1 && echo "✅ uv already installed" || ( \
+		echo "🛠️  Installing uv..."; \
+		curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/$(UV_VERSION)/uv-installer.sh | sh \
+	)
+
 install:
+	make install-uv
 	uv sync --locked
 
 install-test:
