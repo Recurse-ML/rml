@@ -258,13 +258,15 @@ def post_check(
     post_response.raise_for_status()
     post_response_body = post_response.json()
 
-    # Check if the response contains a check_id
-    if "check_id" not in post_response_body:
+    check_id: str | None = post_response_body.get("check_id", None)
+
+    if check_id is None:
+        # If there is no check_id in the response return the error message (or default message).
         raise ValueError(
-            "Server did not respond with a check_id. Please check your API key and try again."
+            post_response_body.get("message", "No check_id returned from server")
         )
 
-    return dict(check_id=post_response.json()["check_id"])
+    return dict(check_id=check_id)
 
 
 def check_analysis_results(check_id: str, **kwargs):
