@@ -78,11 +78,13 @@ def get_git_root() -> Path:
 
 def should_retry_http_error(e: Exception) -> bool:
     if isinstance(e, HTTPStatusError):
-        # Give up on 401 (failed auth), 402 (subscription required), and 5xx errors
+        # Give up on 401 (failed auth), 402 (subscription required),
+        # 413 (file size too large) and 5xx errors
         return (
             e.response.status_code // 100 == 5
             or e.response.status_code == 401
             or e.response.status_code == 402
+            or e.response.status_code == 413
         )
     return False
 
@@ -429,15 +431,25 @@ def main(
         sys.exit(0)
 
     except HTTPStatusError as e:
-        if e.response.status_code == 402:
-            render_auth_result(
-                AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
-            )
-        elif e.response.status_code == 401:
-            render_auth_result(
-                AuthResult(status=AuthStatus.ERROR),
-                console=console,
-            )
+        match e.response.status_code:
+            case 402:
+                render_auth_result(
+                    AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
+                )
+            case 401:
+                render_auth_result(
+                    AuthResult(status=AuthStatus.ERROR),
+                    console=console,
+                )
+            case 413:
+                console.print(
+                    "😱 The files you are trying to analyze are too large. Please reduce the size of the files and try again.",
+                    style="yellow",
+                )
+            case _:
+                logger.error(
+                    f"\nAn unknown error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+                )
 
         sys.exit(1)
 
