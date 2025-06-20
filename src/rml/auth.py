@@ -16,6 +16,7 @@ from rml.package_config import (
     HOST,
     OAUTH_APP_CLIENT_ID,
     RECURSE_API_KEY_NAME,
+    SKIP_AUTH,
 )
 from rml.ui import display_auth_instructions, render_auth_result
 
@@ -88,7 +89,7 @@ async def poll_for_token(device_code: str, interval: int = 1) -> str:
         return access_token
 
 
-async def send_to_backend(access_token: str, user_id: int) -> Response:
+async def send_auth_data_to_backend(access_token: str, user_id: int) -> Response:
     """Send auth data to FastAPI backend"""
     async with AsyncClient(timeout=10.0) as client:
         response = await client.post(
@@ -146,7 +147,9 @@ async def authenticate_with_github(console: Console) -> AuthResult:
 
         # Step 2: User manually completes auth in browser
         display_auth_instructions(
-            device_code["verification_uri"], device_code["user_code"], console=console
+            device_code["verification_uri"],
+            device_code["user_code"],
+            console=console,
         )
 
         # Step 3: Poll for access token
@@ -160,7 +163,7 @@ async def authenticate_with_github(console: Console) -> AuthResult:
 
         # Step 5: Send to backend
         console.print("⏳ Syncing with backend ...")
-        backend_response = await send_to_backend(access_token, user_id)
+        backend_response = await send_auth_data_to_backend(access_token, user_id)
         if backend_response.status_code == 402:
             return AuthResult(status=AuthStatus.PLAN_REQUIRED)
         elif backend_response.status_code != 200:
@@ -190,7 +193,7 @@ def require_auth(f):
     def wrapper(*args, **kwargs):
         console = Console()
 
-        if not is_authenticated():
+        if not (SKIP_AUTH or is_authenticated()):
             auth_result = asyncio.run(authenticate_with_github(console=console))
             render_auth_result(auth_result, console=console)
             if auth_result.status != AuthStatus.SUCCESS:
