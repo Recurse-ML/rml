@@ -97,7 +97,7 @@ fi
 
 # Shell config suggestion
 detect_shell_config() {
-    shell_name=$(basename "$SHELL")
+    shell_name=$(basename "${SHELL:-}")
     config_file=""
     if [ "$shell_name" = "bash" ]; then
         if [ -f "$HOME/.bash_profile" ]; then
@@ -151,7 +151,7 @@ echo ""
 
 if ! command -v rml >/dev/null 2>&1 || ! rml --help >/dev/null 2>&1; then
     echo "⚠️  SETUP REQUIRED:"
-    if [ -n "$SHELL" ]; then
+    if [ -n "${SHELL:-}" ]; then
         SHELL_CONFIG=$(detect_shell_config)
         echo "To use rml from anywhere, add it to your PATH by running:"
         echo ""
