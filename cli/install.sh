@@ -1,14 +1,12 @@
-#!/bin/sh
+#! /usr/bin/env bash
 
-# Exit on error, undefined variables
-set -eu
-#  traps common termination signals (SIGHUP, SIGINT, SIGQUIT, SIGTERM) and print a message
-trap 'echo "An error occurred"' 1 2 3 15
-
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+trap 'echo "Error on line $LINENO"' ERR
 
 
 detect_arch() {
-    arch=$(uname -m | tr '[:upper:]' '[:lower:]')
+    local arch=$(uname -m | tr '[:upper:]' '[:lower:]')
     if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
         echo "arm64"
     elif [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then
@@ -43,8 +41,8 @@ trap cleanup EXIT
 
 
 # Check Dependencies
-DEPS="git tar curl"
-for dep in $DEPS; do
+declare -a DEPS=("git" "tar" "curl")
+for dep in "${DEPS[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         echo "Error: $dep is not installed!"
         exit 1
@@ -78,7 +76,7 @@ fi
 
 # Verify installation
 echo "Finalizing installation (this might take a minute)"
-if ! "$BIN_DIR/rml" --help >/dev/null 2>&1; then
+if ! $BIN_DIR/rml --help &> /dev/null; then
     echo "Error: Installation verification failed"
     exit 1
 fi
@@ -152,13 +150,14 @@ echo "2. ✏️  Modify a file"
 echo "3. 🐛 Run rml to catch bugs (or rml --help for more options)"
 echo ""
 
-if ! command -v rml >/dev/null 2>&1 || ! rml --help >/dev/null 2>&1; then
+if ! rml --help &> /dev/null; then
     echo "⚠️  SETUP REQUIRED:"
     if [ -n "$SHELL" ]; then
         SHELL_CONFIG=$(detect_shell_config)
-        printf "%s\n" "To use rml from anywhere, add it to your PATH by running:\n"
-        
-        printf "%s\n" "    echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> $SHELL_CONFIG\n"
+        echo "To use rml from anywhere, add it to your PATH by running:"
+        echo ""
+        echo "    echo 'export PATH=\"\$PATH:$BIN_DIR\"' >> $SHELL_CONFIG"
+        echo ""
         echo "Then restart your terminal or run: source $SHELL_CONFIG"
     else
         echo "Add $BIN_DIR to your PATH environment variable to use rml from anywhere"
