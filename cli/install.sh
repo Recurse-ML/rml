@@ -17,7 +17,7 @@ detect_arch() {
     elif [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then
         echo "amd64"
     else
-        echo "unsupported"
+        echo "Unsupported architecture: $arch"
         exit 1
     fi
 }
