@@ -58,6 +58,11 @@ jobs:
             arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
             runner: ubuntu-latest
             shell: zsh
+          # Linux + dash (POSIX compliance check)
+          - os: ${{ needs.set-env-vars.outputs.linux_os }}
+            arch: ${{ needs.set-env-vars.outputs.amd64_arch }}
+            runner: ubuntu-latest
+            shell: dash
 
     runs-on: ${{ matrix.runner }}
     
@@ -68,13 +73,19 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y zsh
 
+    - name: Install dash (Ubuntu only)
+      if: startsWith(matrix.runner, 'ubuntu') && matrix.shell == 'dash'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y dash
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Run installation script
-      run: cli/install.sh
+    - name: Run installation script with selected shell
+      run: ${{ matrix.shell }} cli/install.sh
 
-  # Hack to have a single branch protection rule instead one per matrix entry
+  # Hack to have a single branch protection rule instead of one per matrix entry
   all-tests-passed:
     name: All Install Tests Passed
     if: always()
