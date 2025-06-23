@@ -82,11 +82,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies (macOS only)
-      if: startsWith(matrix.runner, 'macos')
-      run: |
-        brew install git curl
-
     - name: Run installation script with selected shell
       run: ${{ matrix.shell }} cli/install.sh
 
