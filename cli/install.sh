@@ -43,13 +43,21 @@ trap cleanup EXIT
 
 
 # Check Dependencies
+MISSING_DEPS=""
 DEPS="git tar curl"
 for dep in $DEPS; do
     if ! command -v "$dep" >/dev/null 2>&1; then
-        echo "Error: $dep is not installed!"
-        exit 1
+        MISSING_DEPS="$MISSING_DEPS $dep"
     fi
 done
+
+if [ -n "$MISSING_DEPS" ]; then
+    echo "Error: Missing dependencies:$MISSING_DEPS"
+    exit 1
+fi
+
+
+
 
 echo "Downloading rml tarball for platform: $PLATFORM"
 if ! curl -fsSL "$ARCHIVE_URL" -o "${TEMP_DIR}/${TARBALL_NAME}"; then
