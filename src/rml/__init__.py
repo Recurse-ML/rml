@@ -77,22 +77,24 @@ def get_git_root() -> Path:
 
 
 def should_retry_http_error(e: Exception) -> bool:
+    """Determine if the HTTP error should be retried.
+
+    Args:
+        e (Exception): The exception to check.
+
+    Returns:
+        bool: True if the error is retryable, False otherwise.
+    """
     if isinstance(e, HTTPStatusError):
-        # Give up on 401 (failed auth), 402 (subscription required),
-        # 413 (file size too large) and 5xx errors
-        return (
-            e.response.status_code // 100 == 5
-            or e.response.status_code == 401
-            or e.response.status_code == 402
-            or e.response.status_code == 413
-        )
+        # Retry on all 4xx and 5xx errors
+        return 400 <= e.response.status_code < 600
     return False
 
 
 @retry(
     retry=retry_if_exception(
         lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and not should_retry_http_error(e)
+        and should_retry_http_error(e)
     ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
@@ -242,7 +244,7 @@ def make_tar(
     reraise=False,
     retry=retry_if_exception(
         lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and not should_retry_http_error(e)
+        and should_retry_http_error(e)
     ),
 )
 def post_check(
