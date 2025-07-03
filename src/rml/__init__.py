@@ -443,7 +443,7 @@ def main(
                 )
             case 413:
                 console.print(
-                    "😱 The files you are trying to analyze are too large. Please reduce the size of the files and try again.",
+                    "😱 This project is too large to be analyzed by `rml` (for now).",
                     style="yellow",
                 )
             case _:
