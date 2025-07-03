@@ -3,11 +3,15 @@
 # Exit on error and undefined variables
 set -eu
 
-# Ensure standard locations are in PATH for shells like dash in CI
-export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$PATH"
+# Ensure standard tools are found (esp. in CI or Apple Silicon shells)
+export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$PATH" 
 
-# Trap common termination signals (SIGHUP, SIGINT, SIGQUIT, SIGTERM)
-trap 'echo "An error occurred"' 1 2 3 15
+# Dash versions pre-2021 have LINENO disabled so we need to check if it's set
+if [ -n "${LINENO+set}" ]; then
+    trap 'echo "Error on line $LINENO"; exit 1' 1 2 3 15
+else
+    trap 'echo "An error occurred"; exit 1' 1 2 3 15
+fi
 
 # Detect architecture
 detect_arch() {
