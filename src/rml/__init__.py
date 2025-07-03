@@ -461,7 +461,7 @@ def main(
 
     except ConnectError as e:
         logger.error(
-            f"\nAn error occurred while connecting to the server: {e}\nPlease check your internet connection and try again."
+            f"\nAn error occurred while connecting to the server: {e}\nAre you connected to the internet?"
         )
         sys.exit(1)
 
