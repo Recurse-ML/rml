@@ -21,6 +21,7 @@ from tenacity import (
 
 from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
+from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
     HOST,
     INSTALL_URL,
@@ -52,28 +53,6 @@ def get_remote_version() -> str:
     response = client.get(VERSION_CHECK_URL, follow_redirects=True)
     response.raise_for_status()
     return response.text.strip()
-
-
-def raise_if_not_in_git_repo() -> None:
-    git_check_retcode, _, _ = local["git"]["rev-parse", "--is-inside-work-tree"].run(
-        retcode=None
-    )
-
-    if git_check_retcode != 0:
-        raise ValueError(
-            "Not a git repository. Please run this script in a git repository."
-        )
-
-
-def get_git_root() -> Path:
-    """
-    Get the root directory of the current Git repository.
-    """
-    try:
-        git_root = local["git"]["rev-parse", "--show-toplevel"]()
-        return Path(git_root.strip())
-    except Exception:
-        raise ValueError("Could not determine the Git root directory")
 
 
 def should_retry_http_error(e: Exception) -> bool:
@@ -284,10 +263,31 @@ def analyze(
         logger.warning("No target file, no bugs!")
         return
 
-    # Recording the implicit assumptions here
-    # Once we process the changes, these will become relevant
-    from_commit = from_ref
-    to_commit = to_ref  # current index state
+    changed_files = get_changed_files(from_ref, to_ref)
+
+    changed_target_filenames = [
+        filename for filename in target_filenames if filename in changed_files
+    ]
+
+    if len(changed_target_filenames) == 0:
+        if markdown:
+            print("✨ No changes found in the specified files! ✨")
+        else:
+            console.print(Text("✨ No changes found in the specified files! ✨"))
+        return
+
+    if len(changed_target_filenames) != len(target_filenames):
+        skipped_files = [
+            f for f in target_filenames if f not in changed_target_filenames
+        ]
+        if markdown:
+            print(
+                f"ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}"
+            )
+        else:
+            console.print(
+                f"[dim]ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}[/dim]"
+            )
 
     workflow_steps = [
         Step(name="Looking for local changes", func=get_files_to_zip),
@@ -303,10 +303,10 @@ def analyze(
             logger=logger,
             markdown_mode=markdown,
             inputs=dict(
-                target_filenames=target_filenames,
+                target_filenames=changed_target_filenames,
                 tempdir=Path(tempdir),
-                from_commit=from_commit,
-                to_commit=to_commit,
+                from_commit=from_ref,
+                to_commit=to_ref,
             ),
         )
         workflow_output = workflow.run()
