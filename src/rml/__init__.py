@@ -259,35 +259,44 @@ def analyze(
     markdown: bool = False,
 ) -> None:
     """Checks for bugs in target_filenames."""
-    if len(target_filenames) == 0:
-        logger.warning("No target file, no bugs!")
-        return
-
     changed_files = get_changed_files(from_ref, to_ref)
 
-    changed_target_filenames = [
-        filename for filename in target_filenames if filename in changed_files
-    ]
-
-    if len(changed_target_filenames) == 0:
-        if markdown:
-            print("✨ No changes found in the specified files! ✨")
-        else:
-            console.print(Text("✨ No changes found in the specified files! ✨"))
-        return
-
-    if len(changed_target_filenames) != len(target_filenames):
-        skipped_files = [
-            f for f in target_filenames if f not in changed_target_filenames
+    if len(target_filenames) == 0:
+        # If no target files specified, analyze all changed files
+        changed_target_filenames = changed_files
+        if len(changed_target_filenames) == 0:
+            if markdown:
+                print("✨ No changes found! ✨")
+            else:
+                console.print(Text("✨ No changes found! ✨"))
+            return
+    else:
+        # Filter target filenames to only include those that have actually changed
+        changed_target_filenames = [
+            filename for filename in target_filenames if filename in changed_files
         ]
-        if markdown:
-            print(
-                f"ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}"
-            )
-        else:
-            console.print(
-                f"[dim]ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}[/dim]"
-            )
+
+    # Only check for target filenames if they were originally specified
+    if len(target_filenames) > 0:
+        if len(changed_target_filenames) == 0:
+            if markdown:
+                print("✨ No changes found in the specified files! ✨")
+            else:
+                console.print(Text("✨ No changes found in the specified files! ✨"))
+            return
+
+        if len(changed_target_filenames) != len(target_filenames):
+            skipped_files = [
+                f for f in target_filenames if f not in changed_target_filenames
+            ]
+            if markdown:
+                print(
+                    f"ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}"
+                )
+            else:
+                console.print(
+                    f"[dim]ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}[/dim]"
+                )
 
     workflow_steps = [
         Step(name="Looking for local changes", func=get_files_to_zip),
@@ -339,9 +348,11 @@ def analyze(
     help="""Find bugs in code. Analyzes changes between two git states for bugs.
 
 By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
+If no files are specified, analyzes all changed files.
 
 Examples:\n
-  rml file.py                             # Analyze uncommitted changes\n
+  rml                                     # Analyze all changed files\n
+  rml file.py                             # Analyze specific file if changed\n
   rml file.py --from HEAD^                # Compare vs 1 commit ago\n
   rml file.py --from main --to feature    # Compare commits
 """
@@ -349,7 +360,7 @@ Examples:\n
 @click.version_option(
     version=get_local_version(), message="🐞Running rml version %(version)s"
 )
-@click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
+@click.argument("target_filenames", nargs=-1)
 @click.option(
     "--from",
     "from_ref",

@@ -215,3 +215,33 @@ def test_get_changed_files_duplicates_removed(git_repo):
 
         # Should not have duplicates
         assert len(changed_files) == len(set(changed_files))
+
+
+def test_get_changed_files_integration_with_analyze():
+    """Integration test to verify get_changed_files works with analyze function."""
+    from unittest.mock import Mock, patch
+
+    from rich.console import Console
+
+    from rml import analyze
+
+    console = Mock(spec=Console)
+
+    with patch("rml.get_changed_files") as mock_get_changed:
+        mock_get_changed.return_value = ["file1.py", "file2.py"]
+
+        with patch("rml.TemporaryDirectory"), patch("rml.Workflow") as mock_workflow:
+            mock_workflow_instance = Mock()
+            mock_workflow.return_value = mock_workflow_instance
+            mock_workflow_instance.run.return_value = {"comments": []}
+
+            # Test analyze with no target files - should analyze all changed files
+            analyze([], "HEAD", None, console, markdown=True)
+
+            # Verify get_changed_files was called
+            mock_get_changed.assert_called_once_with("HEAD", None)
+
+            # Verify workflow was called with all changed files
+            mock_workflow.assert_called_once()
+            args, kwargs = mock_workflow.call_args
+            assert kwargs["inputs"]["target_filenames"] == ["file1.py", "file2.py"]
