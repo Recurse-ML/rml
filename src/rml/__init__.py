@@ -271,12 +271,26 @@ def analyze(
                 console.print(Text("✨ No changes found! ✨"))
             return
     else:
-        # Filter target filenames to only include those that have actually changed
-        changed_target_filenames = [
-            filename for filename in target_filenames if filename in changed_files
-        ]
+        changed_target_filenames = []
+        git_root = get_git_root()
 
-    # Only check for target filenames if they were originally specified
+        for target in target_filenames:
+            full_target_path = git_root / target
+            if full_target_path.is_dir():
+                target_path = Path(target)
+                for changed_file in changed_files:
+                    changed_file_path = Path(changed_file)
+                    try:
+                        changed_file_path.relative_to(target_path)
+                        changed_target_filenames.append(changed_file)
+                    except ValueError:
+                        continue
+            else:
+                if target in changed_files:
+                    changed_target_filenames.append(target)
+
+        changed_target_filenames = list(set(changed_target_filenames))
+
     if len(target_filenames) > 0:
         if len(changed_target_filenames) == 0:
             if markdown:
@@ -353,7 +367,8 @@ If no files are specified, analyzes all changed files.
 Examples:\n
   rml                                     # Analyze all changed files\n
   rml file.py                             # Analyze specific file if changed\n
-  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml src/                                # Analyze all changed files in src/ directory\n
+  rml file.py src/ --from HEAD^           # Analyze file and directory vs 1 commit ago\n
   rml file.py --from main --to feature    # Compare commits
 """
 )
