@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
 import click
-from httpx import Client, HTTPStatusError, RequestError
+from httpx import Client, ConnectError, HTTPStatusError, RequestError
 from plumbum import FG, ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
@@ -56,20 +56,24 @@ def get_remote_version() -> str:
 
 
 def should_retry_http_error(e: Exception) -> bool:
+    """Determine if the HTTP error should be retried.
+
+    Args:
+        e (Exception): The exception to check.
+
+    Returns:
+        bool: True if the error is retryable, False otherwise.
+    """
     if isinstance(e, HTTPStatusError):
-        # Give up on 401 (failed auth), 402 (subscription required), and 5xx errors
-        return (
-            e.response.status_code // 100 == 5
-            or e.response.status_code == 401
-            or e.response.status_code == 402
-        )
+        # Retry on all 4xx and 5xx errors
+        return 400 <= e.response.status_code < 600
     return False
 
 
 @retry(
     retry=retry_if_exception(
         lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and not should_retry_http_error(e)
+        and should_retry_http_error(e)
     ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
@@ -219,7 +223,7 @@ def make_tar(
     reraise=False,
     retry=retry_if_exception(
         lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and not should_retry_http_error(e)
+        and should_retry_http_error(e)
     ),
 )
 def post_check(
@@ -235,8 +239,17 @@ def post_check(
         timeout=None,
     )
     post_response.raise_for_status()
+    post_response_body = post_response.json()
 
-    return dict(check_id=post_response.json()["check_id"])
+    check_id: str | None = post_response_body.get("check_id", None)
+
+    if check_id is None:
+        # If there is no check_id in the response return the error message (or default message).
+        raise ValueError(
+            post_response_body.get("message", "No check_id returned from server")
+        )
+
+    return dict(check_id=check_id)
 
 
 def check_analysis_results(check_id: str, **kwargs):
@@ -435,7 +448,7 @@ def main(
 
     except Exception as e:
         logger.error(
-            f"An error occured when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            f"An error occurred when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
         )
         sys.exit(1)
 
@@ -451,21 +464,37 @@ def main(
         sys.exit(0)
 
     except HTTPStatusError as e:
-        if e.response.status_code == 402:
-            render_auth_result(
-                AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
-            )
-        elif e.response.status_code == 401:
-            render_auth_result(
-                AuthResult(status=AuthStatus.ERROR),
-                console=console,
-            )
+        match e.response.status_code:
+            case 402:
+                render_auth_result(
+                    AuthResult(status=AuthStatus.PLAN_REQUIRED), console=console
+                )
+            case 401:
+                render_auth_result(
+                    AuthResult(status=AuthStatus.ERROR),
+                    console=console,
+                )
+            case 413:
+                console.print(
+                    "😱 This project is too large to be analyzed by `rml` (for now).",
+                    style="yellow",
+                )
+            case _:
+                logger.error(
+                    f"\nAn unknown error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+                )
 
         sys.exit(1)
 
     except ValueError as e:
         logger.error(
-            f"\nAn error occured: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            f"\nAn error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+        )
+        sys.exit(1)
+
+    except ConnectError as e:
+        logger.error(
+            f"\nAn error occurred while connecting to the server: {e}\nAre you connected to the internet?"
         )
         sys.exit(1)
 

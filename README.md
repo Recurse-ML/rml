@@ -4,12 +4,11 @@ Find bugs in code.
 Using `rml` is as simple as changing a file, and running `rml <filename>`.
 `rml` will analyze your changes for bugs and report them, if it has found any.
 
-
 # Getting Started
 
 ## Installation
 
-If you just want to use `rml` you can install it by running: 
+If you just want to use `rml` you can install it by running:
 
 ```bash
 curl install.recurse.ml | sh
@@ -44,13 +43,15 @@ If you run into any issues, reach out on [Discord](https://discord.gg/DHrYe75W),
 
 ## Installation (dev)
 
-Ensure [UV](https://github.com/astral-sh/uv?tab=readme-ov-file#installation) is installed in your system:
+From the project root, run:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+make install
 ```
 
-Then from project root run:
+This will install Python 3.11.9 (using pyenv), uv, and all dependencies.
+
+If you want to set up for development (with test/dev dependencies), run:
 
 ```bash
 make install-dev
