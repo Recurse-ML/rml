@@ -252,7 +252,7 @@ def check_analysis_results(check_id: str, **kwargs):
 
 
 def analyze(
-    target_filenames: list[str],
+    target_paths: list[Path],
     from_ref: str,
     to_ref: str,
     console: Console,
@@ -260,10 +260,11 @@ def analyze(
 ) -> None:
     """Checks for bugs in target_filenames."""
     changed_files = get_changed_files(from_ref, to_ref)
+    changed_files_str = [str(f) for f in changed_files]
 
-    if len(target_filenames) == 0:
+    if len(target_paths) == 0:
         # If no target files specified, analyze all changed files
-        changed_target_filenames = changed_files
+        changed_target_filenames = changed_files_str
         if len(changed_target_filenames) == 0:
             if markdown:
                 print("✨ No changes found! ✨")
@@ -274,24 +275,22 @@ def analyze(
         changed_target_filenames = []
         git_root = get_git_root()
 
-        for target in target_filenames:
-            full_target_path = git_root / target
+        for target_path in target_paths:
+            full_target_path = git_root / target_path
             if full_target_path.is_dir():
-                target_path = Path(target)
-                for changed_file in changed_files:
-                    changed_file_path = Path(changed_file)
+                for changed_file_path in changed_files:
                     try:
                         changed_file_path.relative_to(target_path)
-                        changed_target_filenames.append(changed_file)
+                        changed_target_filenames.append(str(changed_file_path))
                     except ValueError:
                         continue
             else:
-                if target in changed_files:
-                    changed_target_filenames.append(target)
+                if target_path in changed_files:
+                    changed_target_filenames.append(str(target_path))
 
         changed_target_filenames = list(set(changed_target_filenames))
 
-    if len(target_filenames) > 0:
+    if len(target_paths) > 0:
         if len(changed_target_filenames) == 0:
             if markdown:
                 print("✨ No changes found in the specified files! ✨")
@@ -299,17 +298,22 @@ def analyze(
                 console.print(Text("✨ No changes found in the specified files! ✨"))
             return
 
-        if len(changed_target_filenames) != len(target_filenames):
-            skipped_files = [
-                f for f in target_filenames if f not in changed_target_filenames
-            ]
+        if len(changed_target_filenames) != len(target_paths):
+            target_file_paths = filter(lambda path: path.is_file(), target_paths)
+            skipped_target_paths = list(
+                filter(
+                    lambda path: str(path) not in changed_target_filenames,
+                    target_file_paths,
+                )
+            )
+
             if markdown:
                 print(
-                    f"ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}"
+                    f"Skipping {len(skipped_target_paths)} unchanged files: {', '.join(str(p) for p in skipped_target_paths)}"
                 )
             else:
                 console.print(
-                    f"[dim]ℹ️ Skipping {len(skipped_files)} unchanged files: {', '.join(skipped_files)}[/dim]"
+                    f"[dim]ℹ️ Skipping {len(skipped_target_paths)} unchanged files: {', '.join(str(p) for p in skipped_target_paths)}[/dim]"
                 )
 
     workflow_steps = [
@@ -436,8 +440,9 @@ def main(
         sys.exit(1)
 
     try:
+        target_paths = [Path(f) for f in target_filenames]
         analyze(
-            target_filenames,
+            target_paths,
             from_ref=from_ref,
             to_ref=to_ref,
             console=console,

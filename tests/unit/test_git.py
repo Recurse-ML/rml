@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from plumbum import local
 
@@ -34,7 +36,6 @@ def git_repo(tmp_path):
 def test_raise_if_not_in_git_repo_success(git_repo):
     """Test that raise_if_not_in_git_repo passes when in a git repository."""
     with local.cwd(git_repo):
-        # Should not raise an exception
         raise_if_not_in_git_repo()
 
 
@@ -73,9 +74,9 @@ def test_get_changed_files_between_commits(git_repo):
         changed_files = get_changed_files("HEAD~1", "HEAD")
 
         # Should include modified and new files
-        assert "file1.py" in changed_files
-        assert "file3.py" in changed_files
-        assert "file2.py" not in changed_files  # unchanged
+        assert Path("file1.py") in changed_files
+        assert Path("file3.py") in changed_files
+        assert Path("file2.py") not in changed_files  # unchanged
         assert len(changed_files) == 2
 
 
@@ -89,10 +90,10 @@ def test_get_changed_files_working_directory(git_repo):
         changed_files = get_changed_files("HEAD")
 
         # Should include modified and new files in working directory
-        assert "file1.py" in changed_files
-        assert "file4.py" in changed_files
-        assert "file2.py" not in changed_files  # unchanged
-        assert "file3.py" not in changed_files  # unchanged
+        assert Path("file1.py") in changed_files
+        assert Path("file4.py") in changed_files
+        assert Path("file2.py") not in changed_files  # unchanged
+        assert Path("file3.py") not in changed_files  # unchanged
 
 
 def test_get_changed_files_no_changes(git_repo):
@@ -115,8 +116,7 @@ def test_get_changed_files_single_file_change(git_repo):
 
         changed_files = get_changed_files("HEAD~1", "HEAD")
 
-        # Should only include the one changed file
-        assert changed_files == ["file2.py"]
+        assert changed_files == [Path("file2.py")]
 
 
 def test_get_changed_files_multiple_scenarios(git_repo):
@@ -128,7 +128,7 @@ def test_get_changed_files_multiple_scenarios(git_repo):
         local["git"]["commit", "-m", "Add config"]()
 
         changed_files = get_changed_files("HEAD~1", "HEAD")
-        assert changed_files == ["config.py"]
+        assert changed_files == [Path("config.py")]
 
         # Scenario 2: Modify multiple files
         (git_repo / "file1.py").write_text("print('hello again')")
@@ -137,7 +137,7 @@ def test_get_changed_files_multiple_scenarios(git_repo):
         local["git"]["commit", "-m", "Update multiple files"]()
 
         changed_files = get_changed_files("HEAD~1", "HEAD")
-        assert set(changed_files) == {"file1.py", "config.py"}
+        assert set(changed_files) == {Path("file1.py"), Path("config.py")}
 
         # Scenario 3: Delete a file
         (git_repo / "file3.py").unlink()
@@ -145,7 +145,9 @@ def test_get_changed_files_multiple_scenarios(git_repo):
         local["git"]["commit", "-m", "Delete file3"]()
 
         changed_files = get_changed_files("HEAD~1", "HEAD")
-        assert changed_files == ["file3.py"]  # Deleted files still show up in diff
+        assert changed_files == [
+            Path("file3.py")
+        ]  # Deleted files still show up in diff
 
 
 def test_get_changed_files_empty_strings_filtered(git_repo):
@@ -155,9 +157,8 @@ def test_get_changed_files_empty_strings_filtered(git_repo):
         # Even if git returns empty lines, they should be filtered out
         changed_files = get_changed_files("HEAD~1", "HEAD")
 
-        # All returned files should be non-empty strings
-        assert all(f.strip() for f in changed_files)
-        assert "" not in changed_files
+        assert all(len(str(f).strip()) > 0 for f in changed_files)
+        assert Path("") not in changed_files
 
 
 def test_get_changed_files_with_subdirectories(git_repo):
@@ -182,9 +183,9 @@ def test_get_changed_files_with_subdirectories(git_repo):
         changed_files = get_changed_files("HEAD~1", "HEAD")
 
         # Should include files with relative paths
-        assert "src/main.py" in changed_files
-        assert "tests/test_new.py" in changed_files
-        assert "tests/test_main.py" not in changed_files  # unchanged
+        assert Path("src/main.py") in changed_files
+        assert Path("tests/test_new.py") in changed_files
+        assert Path("tests/test_main.py") not in changed_files  # unchanged
 
 
 def test_get_changed_files_invalid_ref(git_repo):
@@ -213,7 +214,6 @@ def test_get_changed_files_duplicates_removed(git_repo):
         # This test ensures our deduplication logic works
         changed_files = get_changed_files("HEAD~1", "HEAD")
 
-        # Should not have duplicates
         assert len(changed_files) == len(set(changed_files))
 
 
@@ -228,7 +228,7 @@ def test_get_changed_files_integration_with_analyze():
     console = Mock(spec=Console)
 
     with patch("rml.get_changed_files") as mock_get_changed:
-        mock_get_changed.return_value = ["file1.py", "file2.py"]
+        mock_get_changed.return_value = [Path("file1.py"), Path("file2.py")]
 
         with patch("rml.TemporaryDirectory"), patch("rml.Workflow") as mock_workflow:
             mock_workflow_instance = Mock()

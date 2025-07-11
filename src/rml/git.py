@@ -35,7 +35,7 @@ def get_git_root() -> Path:
         raise ValueError("Could not determine the Git root directory")
 
 
-def get_changed_files(from_ref: str, to_ref: Optional[str] = None) -> list[str]:
+def get_changed_files(from_ref: str, to_ref: Optional[str] = None) -> list[Path]:
     """
     Get the list of files that have changed between two git references.
 
@@ -54,8 +54,7 @@ def get_changed_files(from_ref: str, to_ref: Optional[str] = None) -> list[str]:
 
     with local.cwd(get_git_root()):
         if to_ref is None:
-            # Compare against working directory - include both modified and untracked files
-            # Get modified/deleted files
+            # Defaults to comparing against working directory - include both modified and untracked files
             changed_files = local["git"]["diff", "--name-only", from_ref]().splitlines()
             # Get untracked files (newly added files that aren't committed yet)
             untracked_files = local["git"][
@@ -68,5 +67,6 @@ def get_changed_files(from_ref: str, to_ref: Optional[str] = None) -> list[str]:
                 "diff", "--name-only", from_ref, to_ref
             ]().splitlines()
 
-        # Filter out empty strings and remove duplicates
-        return list(set(f for f in all_changed_files if f.strip()))
+        non_empty_path_names = filter(lambda f: f.strip() != "", all_changed_files)
+        changed_file_paths = map(Path, non_empty_path_names)
+        return list(set(changed_file_paths))
