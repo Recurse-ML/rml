@@ -21,6 +21,7 @@ from tenacity import (
 
 from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
+from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
     HOST,
     INSTALL_URL,
@@ -52,28 +53,6 @@ def get_remote_version() -> str:
     response = client.get(VERSION_CHECK_URL, follow_redirects=True)
     response.raise_for_status()
     return response.text.strip()
-
-
-def raise_if_not_in_git_repo() -> None:
-    git_check_retcode, _, _ = local["git"]["rev-parse", "--is-inside-work-tree"].run(
-        retcode=None
-    )
-
-    if git_check_retcode != 0:
-        raise ValueError(
-            "Not a git repository. Please run this script in a git repository."
-        )
-
-
-def get_git_root() -> Path:
-    """
-    Get the root directory of the current Git repository.
-    """
-    try:
-        git_root = local["git"]["rev-parse", "--show-toplevel"]()
-        return Path(git_root.strip())
-    except Exception:
-        raise ValueError("Could not determine the Git root directory")
 
 
 def should_retry_http_error(e: Exception) -> bool:
@@ -286,21 +265,69 @@ def check_analysis_results(check_id: str, **kwargs):
 
 
 def analyze(
-    target_filenames: list[str],
+    target_paths: list[Path],
     from_ref: str,
     to_ref: str,
     console: Console,
     markdown: bool = False,
 ) -> None:
     """Checks for bugs in target_filenames."""
-    if len(target_filenames) == 0:
-        logger.warning("No target file, no bugs!")
-        return
+    changed_files = get_changed_files(from_ref, to_ref)
+    changed_files_str = [str(f) for f in changed_files]
 
-    # Recording the implicit assumptions here
-    # Once we process the changes, these will become relevant
-    from_commit = from_ref
-    to_commit = to_ref  # current index state
+    if len(target_paths) == 0:
+        # If no target files specified, analyze all changed files
+        changed_target_filenames = changed_files_str
+        if len(changed_target_filenames) == 0:
+            if markdown:
+                print("✨ No changes found! ✨")
+            else:
+                console.print(Text("✨ No changes found! ✨"))
+            return
+    else:
+        changed_target_filenames = []
+        git_root = get_git_root()
+
+        for target_path in target_paths:
+            full_target_path = git_root / target_path
+            if full_target_path.is_dir():
+                for changed_file_path in changed_files:
+                    try:
+                        changed_file_path.relative_to(target_path)
+                        changed_target_filenames.append(str(changed_file_path))
+                    except ValueError:
+                        continue
+            else:
+                if target_path in changed_files:
+                    changed_target_filenames.append(str(target_path))
+
+        changed_target_filenames = list(set(changed_target_filenames))
+
+    if len(target_paths) > 0:
+        if len(changed_target_filenames) == 0:
+            if markdown:
+                print("✨ No changes found in the specified files! ✨")
+            else:
+                console.print(Text("✨ No changes found in the specified files! ✨"))
+            return
+
+        if len(changed_target_filenames) != len(target_paths):
+            target_file_paths = filter(lambda path: path.is_file(), target_paths)
+            skipped_target_paths = list(
+                filter(
+                    lambda path: str(path) not in changed_target_filenames,
+                    target_file_paths,
+                )
+            )
+
+            if markdown:
+                print(
+                    f"Skipping {len(skipped_target_paths)} unchanged files: {', '.join(str(p) for p in skipped_target_paths)}"
+                )
+            else:
+                console.print(
+                    f"[dim]ℹ️ Skipping {len(skipped_target_paths)} unchanged files: {', '.join(str(p) for p in skipped_target_paths)}[/dim]"
+                )
 
     workflow_steps = [
         Step(name="Looking for local changes", func=get_files_to_zip),
@@ -316,10 +343,10 @@ def analyze(
             logger=logger,
             markdown_mode=markdown,
             inputs=dict(
-                target_filenames=target_filenames,
+                target_filenames=changed_target_filenames,
                 tempdir=Path(tempdir),
-                from_commit=from_commit,
-                to_commit=to_commit,
+                from_commit=from_ref,
+                to_commit=to_ref,
             ),
         )
         workflow_output = workflow.run()
@@ -352,17 +379,20 @@ def analyze(
     help="""Find bugs in code. Analyzes changes between two git states for bugs.
 
 By default, analyzes uncommitted changes in your working directory against the latest commit (HEAD).
+If no files are specified, analyzes all changed files.
 
 Examples:\n
-  rml file.py                             # Analyze uncommitted changes\n
-  rml file.py --from HEAD^                # Compare vs 1 commit ago\n
+  rml                                     # Analyze all changed files\n
+  rml file.py                             # Analyze specific file if changed\n
+  rml src/                                # Analyze all changed files in src/ directory\n
+  rml file.py src/ --from HEAD^           # Analyze file and directory vs 1 commit ago\n
   rml file.py --from main --to feature    # Compare commits
 """
 )
 @click.version_option(
     version=get_local_version(), message="🐞Running rml version %(version)s"
 )
-@click.argument("target_filenames", nargs=-1, type=click.Path(exists=True))
+@click.argument("target_filenames", nargs=-1)
 @click.option(
     "--from",
     "from_ref",
@@ -423,8 +453,9 @@ def main(
         sys.exit(1)
 
     try:
+        target_paths = [Path(f) for f in target_filenames]
         analyze(
-            target_filenames,
+            target_paths,
             from_ref=from_ref,
             to_ref=to_ref,
             console=console,
