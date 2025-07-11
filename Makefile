@@ -1,4 +1,4 @@
-UV_VERSION=0.6.16
+UV_VERSION=0.7.20
 
 lint-check:
 	ruff check --no-fix
