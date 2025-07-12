@@ -82,8 +82,8 @@ jobs:
 
       - name: Install and build
         run: |
-          source .venv/bin/activate
           make install
+          source .venv/bin/activate
           make bundle
 
       - name: Upload artifact
