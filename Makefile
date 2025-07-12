@@ -25,9 +25,6 @@ bundle:
 	  tar -czf dist/$$TAR_NAME -C dist rml/;'
 
 install:
-	pyenv install 3.11.9 || true
-	pyenv local 3.11.9
-	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/$(UV_VERSION)/uv-installer.sh | sh
 	uv sync --locked
 
 install-test:

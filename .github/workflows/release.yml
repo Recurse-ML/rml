@@ -12,14 +12,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.13'
-
-      - name: Install Package
-        run: |
-          pip install uv
+          version: "0.7.2"
+          enable-cache: true
 
       - name: Check Version
         run: |
@@ -72,17 +69,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.2"
+          enable-cache: true
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version-file: 'pyproject.toml'
 
       - name: Install and build
         run: |
-          pip install uv
-          uv sync --locked
-          source .venv/bin/activate
           make install
+          source .venv/bin/activate
           make bundle
 
       - name: Upload artifact
