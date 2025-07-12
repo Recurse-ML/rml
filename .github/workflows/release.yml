@@ -2,8 +2,6 @@ name: Build and Release
 
 on:
   workflow_dispatch
-  release:
-    types: [created]
 
 jobs:
   check-version-bump:
