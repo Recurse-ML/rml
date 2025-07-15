@@ -230,8 +230,6 @@ def post_check(
     archive_filename: str,
     archive_path: Path,
     target_filenames: list[str],
-    console: Console,
-    markdown_mode: bool = False,
     **kwargs,
 ) -> dict[str, Any]:
     api_key = get_env_value(RECURSE_API_KEY_NAME)
@@ -247,23 +245,6 @@ def post_check(
     post_response_body = post_response.json()
 
     check_id: str | None = post_response_body.get("check_id", None)
-
-    is_authorized: bool = post_response_body.get("is_authorized", True)
-    if not is_authorized:
-        if markdown_mode:
-            print(
-                "WARNING: You need to purchase a plan on the marketplace (https://github.com/marketplace/recurse-ml) to use the Recurse ML app."
-            )
-            print("Free subscriptions for private repos will terminate on 21/07/2025.")
-        else:
-            console.print(
-                "[bold] ⚠️ You need to purchase a plan on the marketplace[/bold]"
-            )
-            console.print("   📦 https://github.com/marketplace/recurse-ml")
-            console.print(
-                "[dim]Free subscriptions for private repos will terminate on 21/07/2025.[/dim]"
-            )
-            console.print()
 
     if check_id is None:
         # If there is no check_id in the response return the error message (or default message).

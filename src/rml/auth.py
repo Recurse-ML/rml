@@ -1,5 +1,4 @@
 import asyncio
-import sys
 from functools import wraps
 from typing import Optional
 
@@ -196,8 +195,10 @@ def require_auth(f):
         if not (SKIP_AUTH or is_authenticated()):
             auth_result = asyncio.run(authenticate_with_github(console=console))
             render_auth_result(auth_result, console=console)
+            """ TODO (Armin): Uncomment this on 21/07/2025
             if auth_result.status != AuthStatus.SUCCESS:
                 sys.exit(1)
+            """
 
         return f(*args, **kwargs)
 

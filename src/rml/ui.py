@@ -86,10 +86,10 @@ class Workflow:
             markdown_mode: if True, use plain text output instead of Rich formatting
         """
         self.steps = steps
+        self.inputs = inputs
         self.console = console
         self.logger = logger
         self.markdown_mode = markdown_mode
-        self.inputs = inputs | {"console": console, "markdown_mode": markdown_mode}
 
     def render(self):
         table = Table.grid(padding=(0, 1))
@@ -350,9 +350,18 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
     if result.status == AuthStatus.SUCCESS:
         console.print("[bold green]✅ Authentication successful![/bold green]")
     elif result.status == AuthStatus.PLAN_REQUIRED:
+        console.print("[bold] ⚠️ You need to purchase a plan on the marketplace[/bold]")
+        console.print("   📦 https://github.com/marketplace/recurse-ml")
+        console.print(
+            "[dim]Free CLI access will terminate on 21/07/2025.[/dim]"
+            "[dim]Our GH App will remain free for open source projects.[/dim]"
+        )
+        console.print()
+        """ TODO (Armin): Uncomment this on 21/07/2025
         console.print(
             "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
         )
+        """
     else:
         console.print(
             f"[bold red]❌ Authentication failed {'(' + result.message + ')' if result.message else ''}[/bold red]"
