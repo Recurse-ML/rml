@@ -86,10 +86,10 @@ class Workflow:
             markdown_mode: if True, use plain text output instead of Rich formatting
         """
         self.steps = steps
-        self.inputs = inputs
         self.console = console
         self.logger = logger
         self.markdown_mode = markdown_mode
+        self.inputs = inputs | {"console": console, "markdown_mode": markdown_mode}
 
     def render(self):
         table = Table.grid(padding=(0, 1))
