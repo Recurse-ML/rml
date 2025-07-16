@@ -1,14 +1,13 @@
 import sys
 import time
 from datetime import datetime
-from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
 import click
 from httpx import Client, ConnectError, HTTPStatusError, RequestError
-from plumbum import FG, ProcessExecutionError, local
+from plumbum import ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
@@ -24,9 +23,7 @@ from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
     HOST,
-    INSTALL_URL,
     RECURSE_API_KEY_NAME,
-    VERSION_CHECK_URL,
 )
 from rml.package_logger import logger
 from rml.ui import (
@@ -36,6 +33,7 @@ from rml.ui import (
     render_comments,
     render_comments_markdown,
 )
+from rml.update import get_local_version, get_remote_version, update_and_rerun_rml
 
 client = Client(base_url=HOST)
 
@@ -43,16 +41,6 @@ client = Client(base_url=HOST)
 def installed_from_source() -> bool:
     # https://pyinstaller.org/en/stable/runtime-information.html#run-time-information
     return not (getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"))
-
-
-def get_local_version() -> str:
-    return version("rml")
-
-
-def get_remote_version() -> str:
-    response = client.get(VERSION_CHECK_URL, follow_redirects=True)
-    response.raise_for_status()
-    return response.text.strip()
 
 
 def should_retry_http_error(e: Exception) -> bool:
@@ -429,34 +417,21 @@ def main(
     try:
         local_version = get_local_version()
         remote_version = get_remote_version()
-        if local_version != remote_version:
-            if installed_from_source():
-                logger.warning(
-                    f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything runs smoothly."
-                )
-            else:
-                try:
-                    logger.info(f"Updating rml to version {remote_version}...")
-                    (local["curl"][INSTALL_URL] | local["sh"]) & FG
-                    logger.info("Update successful!")
-                    original_command = "rml " + " ".join(sys.argv[1:])
-                    click.echo(
-                        f"Please restart your terminal and rerun: {original_command}"
-                    )
-                    sys.exit(0)
-                except Exception as e:
-                    logger.error(f"Failed to update rml: {e}")
-                    click.echo(
-                        "rml requires latest version to run. Please update manually with:"
-                    )
-                    click.echo(f"curl {INSTALL_URL} | sh")
-                    sys.exit(1)
 
     except Exception as e:
         logger.error(
             f"An error occurred when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
         )
         sys.exit(1)
+
+    if local_version != remote_version:
+        if installed_from_source():
+            logger.warning(
+                f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything runs smoothly."
+            )
+        else:
+            update_and_rerun_rml()
+            sys.exit(0)
 
     try:
         target_paths = [Path(f) for f in target_filenames]
