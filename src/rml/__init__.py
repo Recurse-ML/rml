@@ -454,7 +454,7 @@ def main(
 
     except Exception as e:
         logger.error(
-            f"An error occurred when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            f"An error occurred when checking for updates: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
         )
         sys.exit(1)
 
@@ -487,14 +487,14 @@ def main(
                 )
             case _:
                 logger.error(
-                    f"\nAn unknown error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+                    f"\nAn unknown error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
                 )
 
         sys.exit(1)
 
     except ValueError as e:
         logger.error(
-            f"\nAn error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message and the command you ran."
+            f"\nAn error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
         )
         sys.exit(1)
 
