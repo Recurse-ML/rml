@@ -227,7 +227,10 @@ def make_tar(
     ),
 )
 def post_check(
-    archive_filename: str, archive_path: Path, target_filenames: list[str], **kwargs
+    archive_filename: str,
+    archive_path: Path,
+    target_filenames: list[str],
+    **kwargs,
 ) -> dict[str, Any]:
     api_key = get_env_value(RECURSE_API_KEY_NAME)
 
@@ -311,15 +314,14 @@ def analyze(
                 console.print(Text("✨ No changes found in the specified files! ✨"))
             return
 
-        if len(changed_target_filenames) != len(target_paths):
-            target_file_paths = filter(lambda path: path.is_file(), target_paths)
-            skipped_target_paths = list(
-                filter(
-                    lambda path: str(path) not in changed_target_filenames,
-                    target_file_paths,
-                )
+        target_file_paths = filter(lambda path: path.is_file(), target_paths)
+        skipped_target_paths = list(
+            filter(
+                lambda path: str(path) not in changed_target_filenames,
+                target_file_paths,
             )
-
+        )
+        if len(skipped_target_paths) > 0:
             if markdown:
                 print(
                     f"Skipping {len(skipped_target_paths)} unchanged files: {', '.join(str(p) for p in skipped_target_paths)}"
