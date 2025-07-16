@@ -418,6 +418,7 @@ def main(
     target_filenames: list[str], from_ref: str, to_ref: str, markdown: bool
 ) -> None:
     """Find bugs in code. Analyzes changes between two git states for bugs."""
+
     console = Console()
     handler = RichHandler(
         console=console,
@@ -435,9 +436,14 @@ def main(
                 )
             else:
                 try:
-                    logger.info("Updating rml to latest version...")
+                    logger.info(f"Updating rml to version {remote_version}...")
                     (local["curl"][INSTALL_URL] | local["sh"]) & FG
-                    logger.info("rml updated to latest version.")
+                    logger.info("Update successful!")
+                    original_command = "rml " + " ".join(sys.argv[1:])
+                    click.echo(
+                        f"Please restart your terminal and rerun: {original_command}"
+                    )
+                    sys.exit(0)
                 except Exception as e:
                     logger.error(f"Failed to update rml: {e}")
                     click.echo(
