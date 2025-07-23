@@ -357,14 +357,8 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
             "[dim]Our GH App will remain free for open source projects.[/dim]"
         )
         console.print()
-        """ TODO (Armin): Uncomment this on 21/07/2025
         console.print(
-            "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
-        )
-        """
-    else:
-        console.print(
-            f"[bold red]❌ Authentication failed {'(' + result.message + ')' if result.message else ''}[/bold red]"
+            "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml` again.[/bold yellow]"
         )
 
 
