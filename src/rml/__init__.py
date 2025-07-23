@@ -432,11 +432,9 @@ def main(
         remote_version = get_remote_version()
         if local_version != remote_version:
             if installed_from_source():
-                """
                 logger.warning(
                     f"rml is not up to date (local: {local_version}, latest: {remote_version}). Pull latest changes from main to ensure everything runs smoothly."
                 )
-                """
             else:
                 try:
                     logger.info("Updating rml to latest version...")
