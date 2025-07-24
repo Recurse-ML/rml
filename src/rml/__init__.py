@@ -55,26 +55,8 @@ def get_remote_version() -> str:
     return response.text.strip()
 
 
-def should_retry_http_error(e: Exception) -> bool:
-    """Determine if the HTTP error should be retried.
-
-    Args:
-        e (Exception): The exception to check.
-
-    Returns:
-        bool: True if the error is retryable, False otherwise.
-    """
-    if isinstance(e, HTTPStatusError):
-        # Retry on all 4xx and 5xx errors
-        return 400 <= e.response.status_code < 600
-    return False
-
-
 @retry(
-    retry=retry_if_exception(
-        lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and should_retry_http_error(e)
-    ),
+    retry=retry_if_exception(lambda e: isinstance(e, (HTTPStatusError, RequestError))),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
     reraise=False,
@@ -221,10 +203,7 @@ def make_tar(
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
     reraise=False,
-    retry=retry_if_exception(
-        lambda e: isinstance(e, (HTTPStatusError, RequestError))
-        and should_retry_http_error(e)
-    ),
+    retry=retry_if_exception(lambda e: isinstance(e, (HTTPStatusError, RequestError))),
 )
 def post_check(
     archive_filename: str,
