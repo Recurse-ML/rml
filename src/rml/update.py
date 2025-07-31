@@ -1,5 +1,7 @@
 import sys
 from importlib.metadata import version
+from os import execv
+from pathlib import Path
 
 import click
 from httpx import Client
@@ -42,5 +44,8 @@ def update_and_rerun_rml():
     full_path = sys.argv[0]
     original_args = sys.argv[1:]
 
-    logger.info(f"Running updated command: {full_path} {' '.join(original_args)}")
     local[full_path][original_args] & FG
+    executable_name = Path(full_path).name
+
+    logger.info(f"Running updated command: {full_path} {' '.join(original_args)}")
+    execv(full_path, [executable_name] + original_args)
