@@ -48,4 +48,7 @@ def update_and_rerun_rml():
     executable_name = Path(full_path).name
 
     logger.info(f"Running updated command: {full_path} {' '.join(original_args)}")
-    execv(full_path, [executable_name] + original_args)
+    # Prepending executable name to original args, as execv's arg0 is expected to be the command name
+    args = [executable_name] + original_args
+    logger.info(f"Running updated command: {' '.join(args)}")
+    execv(full_path, args)
