@@ -45,4 +45,4 @@ bump-version:
 		echo "Error: version argument is required. Usage: make bump-version version=X.Y.Z"; \
 		exit 1; \
 	fi
-	uv version $(version) && uv sync
+	uv version $(version)

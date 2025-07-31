@@ -350,12 +350,15 @@ def render_auth_result(result: AuthResult, console: Console) -> None:
     if result.status == AuthStatus.SUCCESS:
         console.print("[bold green]✅ Authentication successful![/bold green]")
     elif result.status == AuthStatus.PLAN_REQUIRED:
+        console.print("[bold] ⚠️ You need to purchase a plan on the marketplace[/bold]")
+        console.print("   📦 https://github.com/marketplace/recurse-ml")
         console.print(
-            "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml auth login` again.[/bold yellow]"
+            "[dim]Free CLI access will terminate on 21/07/2025.[/dim]"
+            "[dim]Our GH App will remain free for open source projects.[/dim]"
         )
-    else:
+        console.print()
         console.print(
-            f"[bold red]❌ Authentication failed {'(' + result.message + ')' if result.message else ''}[/bold red]"
+            "[bold yellow]⚠️ To use rml, please purchase a plan at https://github.com/marketplace/recurse-ml and run `rml` again.[/bold yellow]"
         )
 
 
