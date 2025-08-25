@@ -234,6 +234,14 @@ def check_analysis_results(check_id: str, **kwargs):
     return dict(check_status=check_status, comments=comments)
 
 
+def post_result_analytics(account_id: int, success: bool, error: Optional[str]):
+    client.post(
+        "/api/analytics",
+        json={"account_id": account_id, "success": success, "error": error},
+    )
+    return
+
+
 def analyze(
     target_paths: list[Path],
     from_ref: str,
@@ -395,6 +403,8 @@ def main(
     )
     logger.addHandler(handler)
 
+    user_id = get_env_value("user_id") or -1
+
     try:
         local_version = get_local_version()
         remote_version = get_remote_version()
@@ -423,6 +433,8 @@ def main(
             console=console,
             markdown=markdown,
         )
+
+        post_result_analytics(account_id=user_id, success=True, error=None)
         sys.exit(0)
 
     except HTTPStatusError as e:
@@ -446,17 +458,32 @@ def main(
                     f"\nAn unknown error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
                 )
 
+        post_result_analytics(
+            account_id=user_id,
+            success=False,
+            error=f"{type(e).__name__}: {e.response.status_code=} {e.response.text=}",
+        )
         sys.exit(1)
 
     except ValueError as e:
         logger.error(
             f"\nAn error occurred: {e}\nPlease submit an issue on https://github.com/Recurse-ML/rml/issues/new with the error message, the command you ran, and RML version {get_local_version()}."
         )
+        post_result_analytics(
+            account_id=user_id,
+            success=False,
+            error=f"{type(e).__name__}: {e}",
+        )
         sys.exit(1)
 
     except ConnectError as e:
         logger.error(
             f"\nAn error occurred while connecting to the server: {e}\nAre you connected to the internet?"
+        )
+        post_result_analytics(
+            account_id=user_id,
+            success=False,
+            error=f"{type(e).__name__}: {e}",
         )
         sys.exit(1)
 
