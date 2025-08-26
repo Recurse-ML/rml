@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 _current_dir = Path(__file__).parent
@@ -13,7 +14,14 @@ VERSION_CHECK_URL = (
 
 HOST = os.getenv("U_HOST", "https://squash-322339097191.europe-west3.run.app")
 OAUTH_APP_CLIENT_ID = os.getenv("U_OAUTH_APP_CLIENT_ID", "Ov23liYqdgBWHJgs6HCd")
-ENV_FILE_PATH = PROJECT_ROOT / ".env.rml"
 RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
+
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    _config_dir = Path(sys.executable).parent  # ~/.rml/rml/.env.rml
+else:
+    _config_dir = PROJECT_ROOT
+
+ENV_FILE_PATH = _config_dir / ".env.rml"
+ENV_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 SKIP_AUTH = False
