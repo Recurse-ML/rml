@@ -1,18 +1,17 @@
 import os
+import sys
 from pathlib import Path
 
 
 def find_env_file():
-    """Find .env.rml by searching up the directory tree."""
-    start_path = Path(__file__).resolve().parent
-
-    for path in [start_path, *start_path.parents]:
-        env_file = path / ".env.rml"
-        if env_file.exists():
-            return env_file
-
-    # If not found, default to current directory
-    return start_path / ".env.rml"
+    """Find the correct location for .env.rml based on deployment scenario."""
+    # PyInstaller bundle -> Place .env.rml next to the executable
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        executable_dir = Path(sys.executable).parent
+        return executable_dir / ".env.rml"
+    else:
+        # Running from source -> Place .env.rml in project root
+        return PROJECT_ROOT / ".env.rml"
 
 
 _current_dir = Path(__file__).parent
