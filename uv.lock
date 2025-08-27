@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 
 [[package]]
@@ -490,7 +490,7 @@ wheels = [
 
 [[package]]
 name = "rml"
-version = "0.1.11"
+version = "0.1.10"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

@@ -123,7 +123,6 @@ def store_env_data(data: dict[str, str]):
     env_data = dotenv_values(ENV_FILE_PATH)
     env_data = {k: v or "" for k, v in env_data.items()}
     env_data.update(data)
-    ENV_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
     ENV_FILE_PATH.write_text(
         "\n".join(f"{key}={value}" for key, value in env_data.items())
     )
