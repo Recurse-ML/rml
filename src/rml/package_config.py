@@ -1,6 +1,19 @@
 import os
-import sys
 from pathlib import Path
+
+
+def find_env_file():
+    """Find .env.rml by searching up the directory tree."""
+    start_path = Path(__file__).resolve().parent
+
+    for path in [start_path, *start_path.parents]:
+        env_file = path / ".env.rml"
+        if env_file.exists():
+            return env_file
+
+    # If not found, default to current directory
+    return start_path / ".env.rml"
+
 
 _current_dir = Path(__file__).parent
 PROJECT_ROOT = (_current_dir / "../../").resolve()
@@ -14,14 +27,7 @@ VERSION_CHECK_URL = (
 
 HOST = os.getenv("U_HOST", "https://squash-322339097191.europe-west3.run.app")
 OAUTH_APP_CLIENT_ID = os.getenv("U_OAUTH_APP_CLIENT_ID", "Ov23liYqdgBWHJgs6HCd")
+ENV_FILE_PATH = find_env_file()
 RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
-
-if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    _config_dir = Path(sys.executable).parent  # ~/.rml/rml/.env.rml
-else:
-    _config_dir = PROJECT_ROOT
-
-ENV_FILE_PATH = _config_dir / ".env.rml"
-ENV_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 SKIP_AUTH = False
