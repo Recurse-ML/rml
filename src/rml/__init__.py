@@ -73,6 +73,7 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentRespon
     response = client.get(
         GET_CHECK_ROUTE.format(check_id=check_id),
         headers={"Authorization": f"Bearer {api_key}"},
+        timeout=Timeout(CONNECT_TIMEOUT, read=READ_TIMEOUT, write=WRITE_TIMEOUT),
     )
     response.raise_for_status()
     response_body = response.json()
