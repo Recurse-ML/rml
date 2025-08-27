@@ -16,6 +16,14 @@ HOST = os.getenv("U_HOST", "https://squash-322339097191.europe-west3.run.app")
 OAUTH_APP_CLIENT_ID = os.getenv("U_OAUTH_APP_CLIENT_ID", "Ov23liYqdgBWHJgs6HCd")
 RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
 
+# API routes
+POST_CHECK_ROUTE = "/api/check/"
+GET_CHECK_ROUTE = "/api/check/{check_id}/"
+
+CONNECT_TIMEOUT = int(os.getenv("U_CONNECT_TIMEOUT", "30"))
+READ_TIMEOUT = int(os.getenv("U_READ_TIMEOUT", "120"))
+WRITE_TIMEOUT = int(os.getenv("U_WRITE_TIMEOUT", "300"))
+
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     _config_dir = Path(sys.executable).parent  # ~/.rml/rml/.env.rml
 else:
