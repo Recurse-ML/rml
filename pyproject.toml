@@ -1,6 +1,6 @@
 [project]
 name = "rml"
-version = "0.1.11"
+version = "0.1.12"
 description = "CLI for Recurse ML"
 readme = "README.md"
 authors = [
