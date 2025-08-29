@@ -32,6 +32,7 @@ from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
     CONNECT_TIMEOUT,
     GET_CHECK_ROUTE,
+    HEALTH_ROUTE,
     HOST,
     POST_CHECK_ROUTE,
     READ_TIMEOUT,
@@ -434,6 +435,16 @@ def main(
         else:
             update_and_rerun_rml()
             sys.exit(0)
+
+    try:
+        response = client.get(HEALTH_ROUTE)
+        response.raise_for_status()
+        logger.debug("Server health check passed")
+    except (ConnectError, HTTPStatusError, RequestError, ReadTimeout) as e:
+        logger.error(
+            f"\nCannot connect to the server: {e}\nAre you connected to the internet?"
+        )
+        sys.exit(1)
 
     try:
         target_paths = [Path(f) for f in target_filenames]

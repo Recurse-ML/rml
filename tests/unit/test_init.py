@@ -3,7 +3,7 @@ import pytest
 from tenacity import RetryError
 
 import rml.__init__ as rml_init
-from rml.package_config import GET_CHECK_ROUTE, HOST, POST_CHECK_ROUTE
+from rml.package_config import GET_CHECK_ROUTE, HEALTH_ROUTE, HOST, POST_CHECK_ROUTE
 
 
 @pytest.fixture(autouse=True)
@@ -17,6 +17,13 @@ def disable_sleep(monkeypatch):
 def mock_env(monkeypatch):
     """Mock environment variables."""
     monkeypatch.setattr("rml.__init__.get_env_value", lambda name: "test-token")
+
+
+@pytest.fixture
+def mock_version_check(monkeypatch):
+    """Mock version check to return same versions (no update needed)."""
+    monkeypatch.setattr("rml.__init__.get_local_version", lambda: "1.0.0")
+    monkeypatch.setattr("rml.__init__.get_remote_version", lambda: "1.0.0")
 
 
 def test_get_check_status_retries_on_read_timeout_then_succeeds(respx_mock):
@@ -103,3 +110,13 @@ def test_post_check_raises_retry_error_after_max_attempts(respx_mock, tmp_path):
             archive_path=archive_path,
             target_filenames=["test.py"],
         )
+
+
+def test_main_exits_on_health_check_failure(respx_mock, mock_version_check):
+    route = respx_mock.get(f"{HOST}{HEALTH_ROUTE}")
+    route.side_effect = rml_init.ConnectError("Connection failed")
+
+    with pytest.raises(SystemExit) as exc_info:
+        rml_init.main([], "HEAD", None, False)
+
+    assert exc_info.value.code == 1

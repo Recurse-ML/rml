@@ -32,6 +32,7 @@ RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
 # API routes
 POST_CHECK_ROUTE = "/api/check/"
 GET_CHECK_ROUTE = "/api/check/{check_id}/"
+HEALTH_ROUTE = "/health"
 
 CONNECT_TIMEOUT = int(os.getenv("U_CONNECT_TIMEOUT", "30"))
 READ_TIMEOUT = int(os.getenv("U_READ_TIMEOUT", "120"))
