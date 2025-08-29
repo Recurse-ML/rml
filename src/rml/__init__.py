@@ -73,7 +73,6 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentRespon
     response = client.get(
         GET_CHECK_ROUTE.format(check_id=check_id),
         headers={"Authorization": f"Bearer {api_key}"},
-        timeout=Timeout(CONNECT_TIMEOUT, read=READ_TIMEOUT, write=WRITE_TIMEOUT),
     )
     response.raise_for_status()
     response_body = response.json()
@@ -229,7 +228,6 @@ def post_check(
         files={"tar_file": (archive_filename, archive_path.open("rb"))},
         data={"target_filenames": target_filenames},
         headers={"Authorization": f"Bearer {api_key}"},
-        timeout=Timeout(CONNECT_TIMEOUT, read=READ_TIMEOUT, write=WRITE_TIMEOUT),
     )
     post_response.raise_for_status()
     post_response_body = post_response.json()
