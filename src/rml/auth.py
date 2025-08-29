@@ -179,7 +179,7 @@ async def authenticate_with_github(console: Console) -> AuthResult:
         if not api_key:
             raise Exception("No API key received from backend")
 
-        store_env_data({RECURSE_API_KEY_NAME: api_key})
+        store_env_data({RECURSE_API_KEY_NAME: api_key, "user_id": user_id})
 
         return AuthResult(status=AuthStatus.SUCCESS)
 
