@@ -29,4 +29,13 @@ OAUTH_APP_CLIENT_ID = os.getenv("U_OAUTH_APP_CLIENT_ID", "Ov23liYqdgBWHJgs6HCd")
 ENV_FILE_PATH = find_env_file()
 RECURSE_API_KEY_NAME = "RECURSE_API_KEY"
 
+# API routes
+POST_CHECK_ROUTE = "/api/check/"
+GET_CHECK_ROUTE = "/api/check/{check_id}/"
+HEALTH_ROUTE = "/health"
+
+CONNECT_TIMEOUT = int(os.getenv("U_CONNECT_TIMEOUT", "30"))
+READ_TIMEOUT = int(os.getenv("U_READ_TIMEOUT", "120"))
+WRITE_TIMEOUT = int(os.getenv("U_WRITE_TIMEOUT", "300"))
+
 SKIP_AUTH = False
