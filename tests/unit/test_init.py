@@ -26,13 +26,13 @@ def mock_version_check(monkeypatch):
     monkeypatch.setattr("rml.__init__.get_remote_version", lambda: "1.0.0")
 
 
-def test_get_check_status_retries_on_read_timeout_then_succeeds(respx_mock):
-    """Should retry on ReadTimeout and eventually succeed."""
+def test_get_check_status_retries_on_timeout_then_succeeds(respx_mock):
+    """Should retry on TimeoutException and eventually succeed."""
     route = respx_mock.get(f"{HOST}{GET_CHECK_ROUTE.format(check_id='check_123')}")
     route.side_effect = [
-        rml_init.ReadTimeout("timeout"),
-        rml_init.ReadTimeout("timeout"),
-        rml_init.ReadTimeout("timeout"),
+        rml_init.TimeoutException("timeout"),
+        rml_init.TimeoutException("timeout"),
+        rml_init.TimeoutException("timeout"),
         httpx.Response(200, json={"status": "success", "comments": []}),
     ]
 
@@ -46,21 +46,23 @@ def test_get_check_status_retries_on_read_timeout_then_succeeds(respx_mock):
 def test_get_check_status_raises_retry_error_after_max_attempts(respx_mock):
     """Should raise RetryError when all retry attempts fail."""
     route = respx_mock.get(f"{HOST}{GET_CHECK_ROUTE.format(check_id='check_123')}")
-    route.side_effect = rml_init.ReadTimeout("persistent failure")
+    route.side_effect = rml_init.TimeoutException("persistent failure")
 
     with pytest.raises(RetryError):
         rml_init.get_check_status("check_123")
 
 
-def test_post_check_retries_on_write_timeout_then_succeeds(respx_mock, tmp_path):
-    """Should retry on WriteTimeout during file upload and eventually succeed."""
+def test_post_check_retries_on_timeout_during_upload_then_succeeds(
+    respx_mock, tmp_path
+):
+    """Should retry on TimeoutException during file upload and eventually succeed."""
     archive_path = tmp_path / "test.tar.gz"
     archive_path.write_bytes(b"test data")
 
     route = respx_mock.post(f"{HOST}{POST_CHECK_ROUTE}")
     route.side_effect = [
-        rml_init.WriteTimeout("timeout"),
-        rml_init.WriteTimeout("timeout"),
+        rml_init.TimeoutException("timeout"),
+        rml_init.TimeoutException("timeout"),
         httpx.Response(200, json={"check_id": "ck_success"}),
     ]
 
@@ -74,15 +76,17 @@ def test_post_check_retries_on_write_timeout_then_succeeds(respx_mock, tmp_path)
     assert route.call_count == 3
 
 
-def test_post_check_retries_on_read_timeout_then_succeeds(respx_mock, tmp_path):
-    """Should retry on ReadTimeout when reading response and eventually succeed."""
+def test_post_check_retries_on_timeout_when_reading_response_then_succeeds(
+    respx_mock, tmp_path
+):
+    """Should retry on TimeoutException when reading response and eventually succeed."""
     archive_path = tmp_path / "test.tar.gz"
     archive_path.write_bytes(b"test data")
 
     route = respx_mock.post(f"{HOST}{POST_CHECK_ROUTE}")
     route.side_effect = [
-        rml_init.ReadTimeout("timeout"),
-        rml_init.ReadTimeout("timeout"),
+        rml_init.TimeoutException("timeout"),
+        rml_init.TimeoutException("timeout"),
         httpx.Response(200, json={"check_id": "ck_success"}),
     ]
 
@@ -102,7 +106,7 @@ def test_post_check_raises_retry_error_after_max_attempts(respx_mock, tmp_path):
     archive_path.write_bytes(b"test data")
 
     route = respx_mock.post(f"{HOST}{POST_CHECK_ROUTE}")
-    route.side_effect = rml_init.WriteTimeout("persistent failure")
+    route.side_effect = rml_init.TimeoutException("persistent failure")
 
     with pytest.raises(RetryError):
         rml_init.post_check(

@@ -10,10 +10,9 @@ from httpx import (
     Client,
     ConnectError,
     HTTPStatusError,
-    ReadTimeout,
     RequestError,
     Timeout,
-    WriteTimeout,
+    TimeoutException,
 )
 from plumbum import ProcessExecutionError, local
 from rich.console import Console
@@ -62,7 +61,7 @@ def installed_from_source() -> bool:
 
 @retry(
     retry=retry_if_exception(
-        lambda e: isinstance(e, (HTTPStatusError, RequestError, ReadTimeout))
+        lambda e: isinstance(e, (HTTPStatusError, RequestError, TimeoutException))
     ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
@@ -208,9 +207,7 @@ def make_tar(
 
 @retry(
     retry=retry_if_exception(
-        lambda e: isinstance(
-            e, (HTTPStatusError, RequestError, ReadTimeout, WriteTimeout)
-        )
+        lambda e: isinstance(e, (HTTPStatusError, RequestError, TimeoutException))
     ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
@@ -440,7 +437,7 @@ def main(
         response = client.get(HEALTH_ROUTE)
         response.raise_for_status()
         logger.debug("Server health check passed")
-    except (ConnectError, HTTPStatusError, RequestError, ReadTimeout) as e:
+    except (ConnectError, HTTPStatusError, RequestError, TimeoutException) as e:
         logger.error(
             f"\nCannot connect to the server: {e}\nAre you connected to the internet?"
         )
