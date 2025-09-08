@@ -6,7 +6,13 @@ from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
 import click
-from httpx import Client, ConnectError, HTTPStatusError, RequestError
+from httpx import (
+    Client,
+    ConnectError,
+    HTTPStatusError,
+    RequestError,
+    TimeoutException,
+)
 from plumbum import ProcessExecutionError, local
 from rich.console import Console
 from rich.logging import RichHandler
@@ -22,8 +28,12 @@ from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
+    GET_CHECK_ROUTE,
+    HEALTH_ROUTE,
     HOST,
+    POST_CHECK_ROUTE,
     RECURSE_API_KEY_NAME,
+    TIMEOUT,
 )
 from rml.package_logger import logger
 from rml.ui import (
@@ -35,7 +45,10 @@ from rml.ui import (
 )
 from rml.update import get_local_version, get_remote_version, update_and_rerun_rml
 
-client = Client(base_url=HOST)
+client = Client(
+    base_url=HOST,
+    timeout=TIMEOUT,
+)
 
 
 def installed_from_source() -> bool:
@@ -44,7 +57,9 @@ def installed_from_source() -> bool:
 
 
 @retry(
-    retry=retry_if_exception(lambda e: isinstance(e, (HTTPStatusError, RequestError))),
+    retry=retry_if_exception(
+        lambda e: isinstance(e, (HTTPStatusError, RequestError, TimeoutException))
+    ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
     reraise=False,
@@ -53,7 +68,7 @@ def get_check_status(check_id: str) -> tuple[str, Optional[list[APICommentRespon
     api_key = get_env_value(RECURSE_API_KEY_NAME)
 
     response = client.get(
-        f"/api/check/{check_id}/",
+        GET_CHECK_ROUTE.format(check_id=check_id),
         headers={"Authorization": f"Bearer {api_key}"},
     )
     response.raise_for_status()
@@ -188,10 +203,12 @@ def make_tar(
 
 
 @retry(
+    retry=retry_if_exception(
+        lambda e: isinstance(e, (HTTPStatusError, RequestError, TimeoutException))
+    ),
     wait=wait_exponential(multiplier=1, min=1, max=30),
     stop=stop_after_attempt(5),
     reraise=False,
-    retry=retry_if_exception(lambda e: isinstance(e, (HTTPStatusError, RequestError))),
 )
 def post_check(
     archive_filename: str,
@@ -202,11 +219,10 @@ def post_check(
     api_key = get_env_value(RECURSE_API_KEY_NAME)
 
     post_response = client.post(
-        "/api/check/",
+        POST_CHECK_ROUTE,
         files={"tar_file": (archive_filename, archive_path.open("rb"))},
         data={"target_filenames": target_filenames},
         headers={"Authorization": f"Bearer {api_key}"},
-        timeout=None,
     )
     post_response.raise_for_status()
     post_response_body = post_response.json()
@@ -423,6 +439,16 @@ def main(
         else:
             update_and_rerun_rml()
             sys.exit(0)
+
+    try:
+        response = client.get(HEALTH_ROUTE)
+        response.raise_for_status()
+        logger.debug("Server health check passed")
+    except (ConnectError, HTTPStatusError, RequestError, TimeoutException) as e:
+        logger.error(
+            f"\nCannot connect to the server: {e}\nAre you connected to the internet?"
+        )
+        sys.exit(1)
 
     try:
         target_paths = [Path(f) for f in target_filenames]
