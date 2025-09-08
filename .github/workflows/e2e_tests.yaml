@@ -1,0 +1,73 @@
+name: E2E Tests 
+
+on:
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Build macOS Binary
+    runs-on: macos-13
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.2"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: 'pyproject.toml'
+
+      - name: Install and build
+        run: |
+          make install
+          source .venv/bin/activate || source env/bin/activate || true
+          make bundle
+
+      - name: List dist contents
+        run: |
+          ls -lah dist || true
+
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rml-macos-tarball
+          path: dist/rml-darwin-*.tar.gz
+
+  test-macos-clean:
+    name: Test macOS Binary in Clean Env
+    needs: build-macos
+    runs-on: macos-13
+    steps:
+      - name: Download artifact only (no checkout)
+        uses: actions/download-artifact@v4
+        with:
+          name: rml-macos-tarball
+          path: artifact
+
+      - name: Extract binary
+        run: |
+          mkdir -p dist/extracted
+          TAR_FILE=$(ls artifact/rml-darwin-*.tar.gz | head -n1)
+          echo "Using tarball: $TAR_FILE"
+          tar -xzf "$TAR_FILE" -C dist/extracted
+          echo "BIN_DIR=dist/extracted/rml" >> $GITHUB_ENV
+
+      - name: Add binary to PATH
+        run: |
+          echo "PATH=$BIN_DIR:$PATH" >> $GITHUB_ENV
+
+      - name: Smoke test binary in clean shell
+        shell: bash -l {0}
+        run: |
+          set -euxo pipefail
+          "$BIN_DIR/rml" --version
+          "$BIN_DIR/rml" -md --help
+
+
