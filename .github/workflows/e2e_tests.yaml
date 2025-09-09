@@ -104,9 +104,11 @@ jobs:
           ref: e2e-test-branch
 
       - name: artifact tree
+        working-directory: "/home/runner/work/rml/rml/"
         run: tree -L 3 .
 
       - name: Run e2e test file
+        working-directory: "/home/runner/work/rml/rml/"
         env:
           BUG_BRANCH: "e2e-test-branch"
         run: pytest -q artifact/tests/e2e/test_e2e.py
