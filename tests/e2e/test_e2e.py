@@ -1,7 +1,10 @@
 import os
 import subprocess
 
+import pytest
 
+
+@pytest.mark.timeout(300)
 def test_e2e():
     bug_branch = os.environ.get("BUG_BRANCH")
     assert bug_branch is not None, "BUG_BRANCH is not set"
