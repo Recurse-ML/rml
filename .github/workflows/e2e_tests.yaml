@@ -27,7 +27,7 @@ jobs:
       - name: Install and build
         run: |
           make install
-          source env/bin/activate
+          source .venv/bin/activate
           make bundle
 
       - name: Upload built artifact
