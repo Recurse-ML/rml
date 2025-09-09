@@ -102,6 +102,9 @@ jobs:
           repository: Recurse-ML/rml-e2e-test
           ref: e2e-test-branch
 
+      - name: tree
+        run: tree -L 5
+
       - name: Run e2e test file
         env:
           BUG_BRANCH: "e2e-test-branch"
