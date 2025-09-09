@@ -11,7 +11,6 @@ from httpx import (
     ConnectError,
     HTTPStatusError,
     RequestError,
-    Timeout,
     TimeoutException,
 )
 from plumbum import ProcessExecutionError, local
@@ -29,14 +28,12 @@ from rml.auth import get_env_value, require_auth
 from rml.datatypes import APICommentResponse, AuthResult, AuthStatus
 from rml.git import get_changed_files, get_git_root, raise_if_not_in_git_repo
 from rml.package_config import (
-    CONNECT_TIMEOUT,
     GET_CHECK_ROUTE,
     HEALTH_ROUTE,
     HOST,
     POST_CHECK_ROUTE,
-    READ_TIMEOUT,
     RECURSE_API_KEY_NAME,
-    WRITE_TIMEOUT,
+    TIMEOUT,
 )
 from rml.package_logger import logger
 from rml.ui import (
@@ -50,7 +47,7 @@ from rml.update import get_local_version, get_remote_version, update_and_rerun_r
 
 client = Client(
     base_url=HOST,
-    timeout=Timeout(CONNECT_TIMEOUT, read=READ_TIMEOUT, write=WRITE_TIMEOUT),
+    timeout=TIMEOUT,
 )
 
 

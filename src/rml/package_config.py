@@ -34,8 +34,6 @@ POST_CHECK_ROUTE = "/api/check/"
 GET_CHECK_ROUTE = "/api/check/{check_id}/"
 HEALTH_ROUTE = "/health"
 
-CONNECT_TIMEOUT = int(os.getenv("U_CONNECT_TIMEOUT", "30"))
-READ_TIMEOUT = int(os.getenv("U_READ_TIMEOUT", "120"))
-WRITE_TIMEOUT = int(os.getenv("U_WRITE_TIMEOUT", "300"))
+TIMEOUT = int(os.getenv("U_TIMEOUT", "300"))
 
 SKIP_AUTH = False
