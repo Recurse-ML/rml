@@ -106,11 +106,11 @@ jobs:
 
       - name: Get GCP Secrets
         id: gcp-secrets
-        uses: google-github-actions/get-secretmanager-secrets@v2
+        uses: google-github-actions/get-secretmanager-secrets@v3
         with:
           secrets: |
-            app_id:E2E_GITHUB_APP_ID
-            app_secret:E2E_GH_APP_SECRET
+            app_id:cerebral-af/E2E_GITHUB_APP_ID
+            app_secret:cerebral-af/E2E_GH_APP_SECRET
 
       - name: Generate GitHub App Token
         id: app-token
