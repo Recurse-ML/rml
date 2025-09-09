@@ -115,4 +115,4 @@ jobs:
         working-directory: "/home/runner/work/rml/rml/"
         env:
           BUG_BRANCH: "e2e-test-branch"
-        run: pytest -q artifact/test_e2e.py
+        run: pytest -vv artifact/test_e2e.py

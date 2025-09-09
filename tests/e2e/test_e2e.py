@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 import pytest
 
@@ -17,7 +18,7 @@ def test_e2e():
             "--to",
             "main",
         ],
-        capture_output=True,
+        stdout=sys.stdout,
         text=True,
     )
     assert result.returncode == 0
