@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -55,6 +55,9 @@ jobs:
     name: Test
     needs: build-linux
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC/Workload Identity Federation
     steps:
       - name: Download artifact only (no checkout)
         uses: actions/download-artifact@v4
@@ -93,15 +96,38 @@ jobs:
           set -euxo pipefail
           rml --version
           rml -md --help
+
+      - name: Authenticate with Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: 'cerebral-af'
+          workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/squash'
+
+
+      - name: Get GCP Secrets
+        id: gcp-secrets
+        uses: google-github-actions/get-secretmanager-secrets@v2
+        with:
+          secrets: |
+            app_id: cerebral-af/secrets/E2E_GITHUB_APP_ID
+            app_secret: cerebral-af/secrets/E2E_GH_APP_SECRET
+
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ steps.gcp-secrets.outputs.app_id }}
+          private-key: ${{ steps.gcp-secrets.outputs.app_secret }}
+          owner: Recurse-ML
+
       - name: Clone recurse-e2e-test-repo
         uses: actions/checkout@v5
         with:
           repository: Recurse-ML/recurse-e2e-test-repo
           ref: e2e-test-branch
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Run e2e test file
         env:
           BUG_BRANCH: "e2e-test-branch"
         run: pytest -q e2e-test/test_e2e.py
-
-
