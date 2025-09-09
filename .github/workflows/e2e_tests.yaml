@@ -68,7 +68,7 @@ jobs:
       - name: Download e2e test file
         uses: actions/download-artifact@v4
         with:
-          name: tests/e2e/test_e2e.py
+          name: test_e2e.py
 
       - name: Extract binary
         run: |
