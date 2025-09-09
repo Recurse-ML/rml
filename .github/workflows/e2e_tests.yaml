@@ -102,6 +102,7 @@ jobs:
         with:
           repository: Recurse-ML/rml-e2e-test
           ref: e2e-test-branch
+          path: rml-e2e-test
 
       - name: artifact tree
         working-directory: "/home/runner/work/rml/rml/"
