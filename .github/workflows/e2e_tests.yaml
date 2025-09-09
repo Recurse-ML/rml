@@ -105,4 +105,4 @@ jobs:
       - name: Run e2e test file
         env:
           BUG_BRANCH: "e2e-test-branch"
-        run: pytest -q test_e2e.py
+        run: pytest -q tests/e2e/test_e2e.py
