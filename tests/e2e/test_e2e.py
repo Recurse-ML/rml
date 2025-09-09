@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -24,9 +23,11 @@ def test_e2e():
             "--to",
             "origin/main",
         ],
-        stdout=sys.stdout,
+        stdout=subprocess.PIPE,
         text=True,
         cwd=test_repo,
     )
+    print(result.stdout)
+    print(result.stderr)
     assert result.returncode == 0
     assert "Time to roll up your sleeves!" in result.stdout
