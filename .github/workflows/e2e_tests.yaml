@@ -77,6 +77,7 @@ jobs:
           TAR_FILE=$(ls artifact/rml-linux-*.tar.gz | head -n1)
           echo "Using tarball: $TAR_FILE"
           tar -xzf "$TAR_FILE" -C dist/extracted
+          echo "${{ secrets.E2E_TEST_RML_KEY }}" > dist/extracted/rml/.env.rml
           echo "BIN_DIR=dist/extracted/rml" >> $GITHUB_ENV
 
       - name: Add binary to PATH
@@ -104,9 +105,11 @@ jobs:
           ref: e2e-test-branch
           path: rml-e2e-test
 
+
       - name: artifact tree
         working-directory: "/home/runner/work/rml/rml/"
         run: tree -L 5 .
+
 
       - name: Run e2e test file
         working-directory: "/home/runner/work/rml/rml/"
