@@ -93,8 +93,15 @@ jobs:
           set -euxo pipefail
           rml --version
           rml -md --help
+      - name: Clone recurse-e2e-test-repo
+        uses: actions/checkout@v5
+        with:
+          repository: Recurse-ML/recurse-e2e-test
+          ref: e2e-test-branch
 
       - name: Run e2e test file
+        env:
+          BUG_BRANCH: "e2e-test-branch"
         run: pytest -q e2e-test/test_e2e.py
 
 
