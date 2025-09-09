@@ -77,7 +77,7 @@ jobs:
           TAR_FILE=$(ls artifact/rml-linux-*.tar.gz | head -n1)
           echo "Using tarball: $TAR_FILE"
           tar -xzf "$TAR_FILE" -C dist/extracted
-          echo "${{ secrets.E2E_TEST_RML_KEY }}" > dist/extracted/rml/.env.rml
+          echo "RECURSE_API_KEY=${{ secrets.E2E_TEST_RML_KEY }}" > dist/extracted/rml/.env.rml
           echo "BIN_DIR=dist/extracted/rml" >> $GITHUB_ENV
 
       - name: Add binary to PATH
