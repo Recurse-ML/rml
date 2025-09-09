@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
-    name: Build macOS Binary
-    runs-on: macos-13
+  build-linux:
+    name: Build
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,47 +27,74 @@ jobs:
       - name: Install and build
         run: |
           make install
-          source .venv/bin/activate || source env/bin/activate || true
+          source env/bin/activate
           make bundle
-
-      - name: List dist contents
-        run: |
-          ls -lah dist || true
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rml-macos-tarball
-          path: dist/rml-darwin-*.tar.gz
+          name: rml-linux-tarball
+          path: dist/rml-linux-*.tar.gz
 
-  test-macos-clean:
-    name: Test macOS Binary in Clean Env
-    needs: build-macos
-    runs-on: macos-13
+      - name: Upload e2e test file
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-file
+          path: tests/e2e/test_e2e.py
+
+      - name: Add binary to PATH
+        run: echo "$BIN_DIR" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+
+  test-linux-clean:
+    name: Test
+    needs: build-linux
+    runs-on: ubuntu-latest
     steps:
       - name: Download artifact only (no checkout)
         uses: actions/download-artifact@v4
         with:
-          name: rml-macos-tarball
+          name: rml-linux-tarball
           path: artifact
+
+      - name: Download e2e test file
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-test-file
+          path: e2e-test
 
       - name: Extract binary
         run: |
           mkdir -p dist/extracted
-          TAR_FILE=$(ls artifact/rml-darwin-*.tar.gz | head -n1)
+          TAR_FILE=$(ls artifact/rml-linux-*.tar.gz | head -n1)
           echo "Using tarball: $TAR_FILE"
           tar -xzf "$TAR_FILE" -C dist/extracted
           echo "BIN_DIR=dist/extracted/rml" >> $GITHUB_ENV
 
       - name: Add binary to PATH
-        run: |
-          echo "PATH=$BIN_DIR:$PATH" >> $GITHUB_ENV
+        run: echo "$BIN_DIR" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: pip install pytest
 
       - name: Smoke test binary in clean shell
         shell: bash -l {0}
         run: |
           set -euxo pipefail
-          "$BIN_DIR/rml" --version
-          "$BIN_DIR/rml" -md --help
+          rml --version
+          rml -md --help
+
+      - name: Run e2e test file
+        run: pytest -q e2e-test/test_e2e.py
 
 
