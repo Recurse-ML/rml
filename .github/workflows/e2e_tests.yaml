@@ -105,6 +105,7 @@ jobs:
           repository: Recurse-ML/rml-e2e-test
           ref: e2e-test-branch
           path: rml-e2e-test
+          fetch-depth: 0
 
 
       - name: artifact tree
