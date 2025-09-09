@@ -114,5 +114,6 @@ jobs:
       - name: Run e2e test file
         working-directory: "/home/runner/work/rml/rml/"
         env:
+          TEST_REPO: "/home/runner/work/rml/rml/rml-e2e-test"
           BUG_BRANCH: "e2e-test-branch"
         run: pytest -vv artifact/test_e2e.py
