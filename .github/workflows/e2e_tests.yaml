@@ -97,35 +97,11 @@ jobs:
           rml --version
           rml -md --help
 
-      - name: Authenticate with Google Cloud
-        uses: 'google-github-actions/auth@v2'
-        with:
-          project_id: 'cerebral-af'
-          workload_identity_provider: 'projects/322339097191/locations/global/workloadIdentityPools/github/providers/squash'
-
-
-      - name: Get GCP Secrets
-        id: gcp-secrets
-        uses: google-github-actions/get-secretmanager-secrets@v3
-        with:
-          secrets: |
-            app_id:cerebral-af/E2E_GITHUB_APP_ID
-            app_secret:cerebral-af/E2E_GH_APP_SECRET
-
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ steps.gcp-secrets.outputs.app_id }}
-          private-key: ${{ steps.gcp-secrets.outputs.app_secret }}
-          owner: Recurse-ML
-
-      - name: Clone recurse-e2e-test-repo
+      - name: Clone rml-e2e-test
         uses: actions/checkout@v5
         with:
-          repository: Recurse-ML/recurse-e2e-test-repo
+          repository: Recurse-ML/rml-e2e-test
           ref: e2e-test-branch
-          token: ${{ steps.app-token.outputs.token }}
 
       - name: Run e2e test file
         env:
