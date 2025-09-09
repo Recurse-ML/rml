@@ -22,7 +22,7 @@ def test_e2e():
             "--from",
             bug_branch,
             "--to",
-            "main",
+            "origin/main",
         ],
         stdout=sys.stdout,
         text=True,
