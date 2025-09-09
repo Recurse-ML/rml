@@ -109,8 +109,8 @@ jobs:
         uses: google-github-actions/get-secretmanager-secrets@v2
         with:
           secrets: |
-            app_id: E2E_GITHUB_APP_ID
-            app_secret: E2E_GH_APP_SECRET
+            app_id:E2E_GITHUB_APP_ID
+            app_secret:E2E_GH_APP_SECRET
 
       - name: Generate GitHub App Token
         id: app-token
