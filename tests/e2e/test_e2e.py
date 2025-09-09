@@ -29,4 +29,4 @@ def test_e2e():
         cwd=test_repo,
     )
     assert result.returncode == 0
-    # TODO (Armin): verify reported output
+    assert "Time to roll up your sleeves!" in result.stdout
