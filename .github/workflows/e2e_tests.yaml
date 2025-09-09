@@ -69,6 +69,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: test_e2e.py
+          path: artifact
 
       - name: Extract binary
         run: |
@@ -102,10 +103,10 @@ jobs:
           repository: Recurse-ML/rml-e2e-test
           ref: e2e-test-branch
 
-      - name: tree
-        run: tree -L 5
+      - name: artifact tree
+        run: tree -L 3 artifact
 
       - name: Run e2e test file
         env:
           BUG_BRANCH: "e2e-test-branch"
-        run: pytest -q tests/e2e/test_e2e.py
+        run: pytest -q artifact/tests/e2e/test_e2e.py
