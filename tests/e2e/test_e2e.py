@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,9 +16,11 @@ def test_e2e():
 
     bug_branch = os.environ.get("BUG_BRANCH")
     assert bug_branch is not None, "BUG_BRANCH is not set"
+    rml_path = shutil.which("rml")
+    assert rml_path is not None, "rml is not on PATH"
     result = subprocess.run(
         [
-            "rml",
+            rml_path,
             "-md",
             "--from",
             bug_branch,
