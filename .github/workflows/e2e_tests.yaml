@@ -106,8 +106,9 @@ jobs:
           ref: e2e-test-branch
           path: rml-e2e-test
           fetch-depth: 0
-
-
+      - name: Fetch main branch
+        working-directory: "/home/runner/work/rml/rml/rml-e2e-test"
+        run: git fetch origin main
       - name: artifact tree
         working-directory: "/home/runner/work/rml/rml/"
         run: tree -L 5 .
