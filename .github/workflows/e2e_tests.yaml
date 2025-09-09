@@ -68,8 +68,7 @@ jobs:
       - name: Download e2e test file
         uses: actions/download-artifact@v4
         with:
-          name: e2e-test-file
-          path: e2e-test
+          name: tests/e2e/test_e2e.py
 
       - name: Extract binary
         run: |
@@ -106,4 +105,4 @@ jobs:
       - name: Run e2e test file
         env:
           BUG_BRANCH: "e2e-test-branch"
-        run: pytest -q e2e-test/tests/e2e/test_e2e.py
+        run: pytest -q test_e2e.py
