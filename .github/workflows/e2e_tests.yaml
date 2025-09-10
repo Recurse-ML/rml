@@ -16,7 +16,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: "0.7.2"
+          version: "0.7.20" # Ensure this matches the version in the Makefile
           enable-cache: true
 
       - name: Set up Python
