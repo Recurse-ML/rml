@@ -46,6 +46,7 @@ jobs:
     name: Run E2E Tests
     needs: build-rml-binary
     runs-on: ubuntu-latest
+    environment: E2E
     permissions:
       contents: read
       id-token: write  # Required for OIDC/Workload Identity Federation
