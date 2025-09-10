@@ -1,4 +1,4 @@
-name: E2E Tests 
+name: E2E Tests
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
-    name: Build
+  build-rml-binary:
+    name: Build RML Binary
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,31 +42,24 @@ jobs:
           name: test_e2e.py
           path: tests/e2e/test_e2e.py
 
-      - name: Add binary to PATH
-        run: echo "$BIN_DIR" >> $GITHUB_PATH
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-
-  test-linux-clean:
-    name: Test
-    needs: build-linux
+  e2e-test:
+    name: Run E2E Tests
+    needs: build-rml-binary
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write  # Required for OIDC/Workload Identity Federation
+    env:
+      WORKSPACE_ROOT: ${{ github.workspace }}
     steps:
-      - name: Download artifact only (no checkout)
+      - name: Download RML binary artifact
         uses: actions/download-artifact@v4
         with:
           name: rml-linux-tarball
           path: artifact
 
       - name: Download e2e test file
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
           name: test_e2e.py
           path: artifact
@@ -79,7 +72,6 @@ jobs:
           tar -xzf "$TAR_FILE" -C dist/extracted
           echo "RECURSE_API_KEY=${{ secrets.E2E_TEST_RML_KEY }}" > dist/extracted/rml/.env.rml
           echo "BIN_DIR=$PWD/dist/extracted/rml" >> $GITHUB_ENV
-
 
       - name: Add binary to PATH
         run: echo "$BIN_DIR" >> $GITHUB_PATH
@@ -106,17 +98,14 @@ jobs:
           ref: e2e-test-branch
           path: rml-e2e-test
           fetch-depth: 0
-      - name: Fetch main branch
-        working-directory: "/home/runner/work/rml/rml/rml-e2e-test"
-        run: git fetch origin main
-      - name: artifact tree
-        working-directory: "/home/runner/work/rml/rml/"
-        run: tree -L 5 .
 
+      - name: Fetch main branch
+        working-directory: ${{ env.WORKSPACE_ROOT }}/rml-e2e-test
+        run: git fetch origin main
 
       - name: Run e2e test file
-        working-directory: "/home/runner/work/rml/rml/"
+        working-directory: ${{ env.WORKSPACE_ROOT }}
         env:
-          TEST_REPO: "/home/runner/work/rml/rml/rml-e2e-test"
+          TEST_REPO: ${{ env.WORKSPACE_ROOT }}/rml-e2e-test
           BUG_BRANCH: "e2e-test-branch"
         run: pytest -s -vv artifact/test_e2e.py
