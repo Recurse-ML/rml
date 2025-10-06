@@ -36,4 +36,4 @@ HEALTH_ROUTE = "/health"
 
 TIMEOUT = int(os.getenv("U_TIMEOUT", "300"))
 
-SKIP_AUTH = False
+SKIP_AUTH = True

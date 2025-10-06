@@ -36,6 +36,7 @@ from rml.package_config import (
     TIMEOUT,
 )
 from rml.package_logger import logger
+from rml.timing import get_timing_collector, init_timing, time_operation
 from rml.ui import (
     Step,
     Workflow,
@@ -106,100 +107,112 @@ def get_files_to_zip(
     to_commit: Optional[str],
     **kwargs,
 ) -> dict[str, Any]:
-    raise_if_not_in_git_repo()
-    git_root: Path = get_git_root()
-    raise_if_files_not_relative_to_git_root(target_filenames, git_root)
+    with time_operation("file_collection"):
+        raise_if_not_in_git_repo()
+        git_root: Path = get_git_root()
+        raise_if_files_not_relative_to_git_root(target_filenames, git_root)
 
-    # Server expects directories to be named 'base' and 'head'
-    from_dir = tempdir / "base"
-    to_dir = tempdir / "head"
-    from_dir.mkdir(exist_ok=True)
-    to_dir.mkdir(exist_ok=True)
+        # Server expects directories to be named 'base' and 'head'
+        from_dir = tempdir / "base"
+        to_dir = tempdir / "head"
+        from_dir.mkdir(exist_ok=True)
+        to_dir.mkdir(exist_ok=True)
 
-    with local.cwd(git_root):
-        tracked_filenames = local["git"]["ls-files"]().splitlines()
-        deleted_filenames = local["git"]["ls-files", "-d"]().splitlines()
+        with local.cwd(git_root):
+            tracked_filenames = local["git"]["ls-files"]().splitlines()
+            deleted_filenames = local["git"]["ls-files", "-d"]().splitlines()
 
-        tracked_filenames = list(set(tracked_filenames) - set(deleted_filenames))
-        untracked_target_filenames = list(
-            set(target_filenames) - set(tracked_filenames)
-        )
+            tracked_filenames = list(set(tracked_filenames) - set(deleted_filenames))
+            untracked_target_filenames = list(
+                set(target_filenames) - set(tracked_filenames)
+            )
 
-        all_filenames = tracked_filenames + untracked_target_filenames
-        # `git ls-files` can include submodules (which are directories), we filter them out
-        all_filenames = list(
-            filter(lambda fname: (git_root / fname).is_file(), all_filenames)
-        )
+            all_filenames = tracked_filenames + untracked_target_filenames
+            # `git ls-files` can include submodules (which are directories), we filter them out
+            all_filenames = list(
+                filter(lambda fname: (git_root / fname).is_file(), all_filenames)
+            )
 
-        # Export files at from_commit
-        for filename in all_filenames:
-            try:
-                file_content = local["git"]["show", f"{from_commit}:{filename}"]()
-                dst_path = from_dir / filename
-                dst_path.parent.mkdir(parents=True, exist_ok=True)
-                dst_path.write_text(file_content)
-            except ProcessExecutionError:
-                logger.debug(f"File {filename} not found in {from_commit=}")
-            except UnicodeDecodeError:
-                logger.debug(f"File {filename} is not a text file")
-
-        # Export files at to_commit or working directory
-        for filename in all_filenames:
-            try:
-                if to_commit is None:
-                    dst_path = to_dir / filename
-                    dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    source_path = git_root / filename
-                    if source_path.exists():
-                        dst_path.write_text(source_path.read_text())
-                    else:
-                        logger.debug(f"File {filename} not found in working directory")
-                else:
-                    file_content = local["git"]["show", f"{to_commit}:{filename}"]()
-                    dst_path = to_dir / filename
+            # Export files at from_commit
+            for filename in all_filenames:
+                try:
+                    file_content = local["git"]["show", f"{from_commit}:{filename}"]()
+                    dst_path = from_dir / filename
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
                     dst_path.write_text(file_content)
-            except ProcessExecutionError:
-                logger.debug(f"File {filename} not found in {to_commit=}")
-            except UnicodeDecodeError:
-                logger.debug(f"File {filename} is not a text file")
+                except ProcessExecutionError:
+                    logger.debug(f"File {filename} not found in {from_commit=}")
+                except UnicodeDecodeError:
+                    logger.debug(f"File {filename} is not a text file")
 
-    return dict(
-        git_root=git_root,
-        all_filenames=all_filenames,
-        from_dir=from_dir,
-        to_dir=to_dir,
-    )
+            # Export files at to_commit or working directory
+            for filename in all_filenames:
+                try:
+                    if to_commit is None:
+                        dst_path = to_dir / filename
+                        dst_path.parent.mkdir(parents=True, exist_ok=True)
+                        source_path = git_root / filename
+                        if source_path.exists():
+                            dst_path.write_text(source_path.read_text())
+                        else:
+                            logger.debug(
+                                f"File {filename} not found in working directory"
+                            )
+                    else:
+                        file_content = local["git"]["show", f"{to_commit}:{filename}"]()
+                        dst_path = to_dir / filename
+                        dst_path.parent.mkdir(parents=True, exist_ok=True)
+                        dst_path.write_text(file_content)
+                except ProcessExecutionError:
+                    logger.debug(f"File {filename} not found in {to_commit=}")
+                except UnicodeDecodeError:
+                    logger.debug(f"File {filename} is not a text file")
+
+        return dict(
+            git_root=git_root,
+            all_filenames=all_filenames,
+            from_dir=from_dir,
+            to_dir=to_dir,
+        )
 
 
 def make_tar(
     git_root: Path, from_dir: Path, to_dir: Path, tempdir: Path, **kwargs
 ) -> dict[str, Any]:
-    repo_dir_name = git_root.name
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    with time_operation("tarball_creation"):
+        repo_dir_name = git_root.name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
-    archive_path = Path(f"{tempdir}/{archive_filename}")
+        archive_filename = f"{repo_dir_name}_{timestamp}.tar.gz"
+        archive_path = Path(f"{tempdir}/{archive_filename}")
 
-    try:
-        with local.cwd(tempdir):
-            local["tar"][
-                "-czf",
-                archive_path,
-                "-C",
-                from_dir.parent,
-                from_dir.name,
-                "-C",
-                to_dir.parent,
-                to_dir.name,
-            ]()
-    except ProcessExecutionError as e:
-        logger.error(f"Tar failed with exit code {e.retcode}")
-        logger.info(f"stdout: {e.stdout}")
-        logger.info(f"stderr: {e.stderr}")
-        raise e
+        try:
+            with local.cwd(tempdir):
+                local["tar"][
+                    "-czf",
+                    archive_path,
+                    "-C",
+                    from_dir.parent,
+                    from_dir.name,
+                    "-C",
+                    to_dir.parent,
+                    to_dir.name,
+                ]()
+        except ProcessExecutionError as e:
+            logger.error(f"Tar failed with exit code {e.retcode}")
+            logger.info(f"stdout: {e.stdout}")
+            logger.info(f"stderr: {e.stderr}")
+            raise e
 
-    return dict(archive_filename=archive_filename, archive_path=archive_path)
+        # Record tarball size
+        tarball_size = archive_path.stat().st_size
+        logger.debug(f"Tarball size: {tarball_size / 1024:.1f} KB")
+
+        return dict(
+            archive_filename=archive_filename,
+            archive_path=archive_path,
+            tarball_size=tarball_size,
+        )
 
 
 @retry(
@@ -216,38 +229,40 @@ def post_check(
     target_filenames: list[str],
     **kwargs,
 ) -> dict[str, Any]:
-    api_key = get_env_value(RECURSE_API_KEY_NAME)
+    with time_operation("network_upload"):
+        api_key = get_env_value(RECURSE_API_KEY_NAME)
 
-    post_response = client.post(
-        POST_CHECK_ROUTE,
-        files={"tar_file": (archive_filename, archive_path.open("rb"))},
-        data={"target_filenames": target_filenames},
-        headers={"Authorization": f"Bearer {api_key}"},
-    )
-    post_response.raise_for_status()
-    post_response_body = post_response.json()
-
-    check_id: str | None = post_response_body.get("check_id", None)
-
-    if check_id is None:
-        # If there is no check_id in the response return the error message (or default message).
-        raise ValueError(
-            post_response_body.get("message", "No check_id returned from server")
+        post_response = client.post(
+            POST_CHECK_ROUTE,
+            files={"tar_file": (archive_filename, archive_path.open("rb"))},
+            data={"target_filenames": target_filenames},
+            headers={"Authorization": f"Bearer {api_key}"},
         )
+        post_response.raise_for_status()
+        post_response_body = post_response.json()
 
-    return dict(check_id=check_id)
+        check_id: str | None = post_response_body.get("check_id", None)
+
+        if check_id is None:
+            # If there is no check_id in the response return the error message (or default message).
+            raise ValueError(
+                post_response_body.get("message", "No check_id returned from server")
+            )
+
+        return dict(check_id=check_id)
 
 
 def check_analysis_results(check_id: str, **kwargs):
-    check_status, comments = get_check_status(check_id)
-    while check_status not in ["success", "error"]:
-        time.sleep(0.5)
+    with time_operation("polling_for_results"):
         check_status, comments = get_check_status(check_id)
-    if comments is None:
-        raise ValueError(
-            "Could not analyze the results, server did not respond with comments"
-        )
-    return dict(check_status=check_status, comments=comments)
+        while check_status not in ["success", "error"]:
+            time.sleep(0.5)
+            check_status, comments = get_check_status(check_id)
+        if comments is None:
+            raise ValueError(
+                "Could not analyze the results, server did not respond with comments"
+            )
+        return dict(check_status=check_status, comments=comments)
 
 
 def analyze(
@@ -258,6 +273,9 @@ def analyze(
     markdown: bool = False,
 ) -> None:
     """Checks for bugs in target_filenames."""
+    # Initialize timing collection
+    init_timing()
+
     changed_files = get_changed_files(from_ref, to_ref)
     changed_files_str = [str(f) for f in changed_files]
 
@@ -336,6 +354,15 @@ def analyze(
         )
         workflow_output = workflow.run()
     comments = workflow_output["comments"]
+
+    # Print timing report
+    timing_collector = get_timing_collector()
+    if timing_collector:
+        timing_report = timing_collector.format_report()
+        if markdown:
+            print(timing_report)
+        else:
+            console.print(timing_report)
 
     if markdown:
         render_comments_markdown(comments)

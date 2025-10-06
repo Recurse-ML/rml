@@ -16,7 +16,9 @@ dependencies = [
     "python-dotenv",
     "pyinstaller>=6.13.0",
     "rich",
-    "tenacity"
+    "tenacity",
+    "matplotlib",
+    "numpy"
 ]
 
 [project.optional-dependencies]
